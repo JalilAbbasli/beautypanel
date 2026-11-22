@@ -1127,10 +1127,35 @@
 
     /* ---------- Vəziyyət ---------- */
 
+    // Standart xidmət kateqoriyaları. Siyahı dəyişəndə CATS_VERSION-u artırın:
+    // mövcud hesablara yalnız çatışmayanlar bir dəfə əlavə olunur.
+    const CATS_VERSION = 2;
+    const DEFAULT_CATS = [
+      'Ümumi',
+      'Saç kəsimi',
+      'Saç boyama',
+      'Saç baxımı',
+      'Saç düzümü',
+      'Manikür',
+      'Pedikür',
+      'Dırnaq dizaynı',
+      'Vizaj (makiyaj)',
+      'Qaş',
+      'Kirpik',
+      'Depilyasiya / Epilyasiya',
+      'Üz baxımı / Kosmetologiya',
+      'Masaj',
+      'Bədən baxımı',
+      'Gəlin paketi',
+      'Kişi bərbəri',
+      'Uşaq xidmətləri'
+    ];
+
     function defaultState() {
       return {
         settings: { salonName: 'Salon', currency: 'AZN', theme: 'light' },
-        cats: ['Ümumi', 'Saç', 'Dırnaq', 'Vizaj'],
+        cats: [...DEFAULT_CATS],
+        catsVersion: CATS_VERSION,
         expCats: ['Kommunal', 'Material', 'Salon icarəsi', 'Reklam', 'Vergi', 'Digər'],
         services: [],
         tenants: [],
@@ -1173,6 +1198,11 @@
         settings: { ...base.settings, ...(raw.settings && typeof raw.settings === 'object' ? raw.settings : {}) }
       };
       merged.cats = cleanList(merged.cats, base.cats);
+      if ((Number(raw.catsVersion) || 1) < CATS_VERSION) {
+        // köhnə hesablar: yeni standart kateqoriyaları bir dəfə əlavə et (silinmişləri sonra geri qaytarma)
+        DEFAULT_CATS.forEach((c) => { if (!merged.cats.includes(c)) merged.cats.push(c); });
+        merged.catsVersion = CATS_VERSION;
+      }
       merged.expCats = cleanList(merged.expCats, base.expCats);
 
       merged.services = withIds(merged.services).map((s) => ({
