@@ -389,6 +389,11 @@
     .bn-item svg { width: 20px; height: 20px; }
     .bn-item.active { color: var(--accent); background: var(--accent-soft); }
     .bn-item.bn-add svg { background: var(--accent); color: #fff; border-radius: 10px; padding: 3px; width: 26px; height: 26px; }
+    .pay-box { display: flex; flex-direction: column; gap: 6px; min-width: 230px; }
+    .pay-box .pay-meta { font-size: 11px; color: var(--muted); }
+    .pay-box .row-actions { flex-wrap: nowrap; }
+    .btn-ok { background: var(--ok); color: #fff; }
+    .btn-ok:hover { filter: brightness(.95); }
     .offline-bar {
       background: var(--err-bg); color: var(--err); font-size: 12.5px; font-weight: 600;
       padding: 9px 12px; border-radius: 10px; margin-bottom: 14px;
@@ -438,6 +443,10 @@
       .table-wrap td:not([data-label])::before, .table-wrap td[data-label=""]::before { content: none; }
       .table-wrap td[colspan] { justify-content: center; text-align: center; }
       .table-wrap td[data-label=""] { justify-content: flex-end; }
+      .table-wrap td:has(.pay-box) { flex-direction: column; align-items: stretch; text-align: left; }
+      .pay-box { min-width: 0; }
+      .pay-box .row-actions { flex-wrap: wrap; }
+      .pay-box .mini-input { flex: 1 1 120px; width: auto; }
       .table-wrap td .row-actions { justify-content: flex-end; }
       .table-wrap td > strong:only-child, .table-wrap td > div { text-align: right; }
     }
@@ -1093,7 +1102,7 @@
             <div class="field"><label>Neçə gün qalmış xəbər verilsin</label><input id="tNotify" type="number" min="0" max="60" step="1" /></div>
             <div style="grid-column:1/-1;"><button type="submit" class="btn btn-primary btn-sm">+ Əlavə et</button></div>
           </form>
-          <div class="info-note">İcarədarın müştərilərindən gələn pul salonun gəlirinə yazılmır. Salon yalnız aylıq icarə alır. İcarə ödənişini “Maliyyə icmalı” bölməsində qəbul edin.</div>
+          <div class="info-note">İcarədarın müştərilərindən gələn pul salonun gəlirinə yazılmır. Salon yalnız aylıq icarə alır. İcarə ödənişini aşağıdakı siyahıda adın yanından qəbul edin: “Tam ödə” qalıq məbləği bir dəfəyə yazır, qismən ödəniş üçün məbləği xanaya yazıb “Qismən” düyməsini basın. Status yalnız tam məbləğ ödəniləndə “Ödənilib” olur.</div>
         </div>
         <div class="card">
           <div class="card-title" style="margin-bottom:10px;">İcarədarlar</div>
@@ -1109,9 +1118,10 @@
             </select></div>
             <div class="f-actions"><span id="fTenCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('ten')">Sıfırla</button></div>
           </div>
+          <div id="tenMsg" class="msg hidden" style="margin:0 0 12px;"></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Ad / Sahə</th><th>İstiqamət</th><th class="num">Aylıq icarə</th><th>Ödəniş günü</th><th>Növbəti ödəniş</th><th>Xəbərdarlıq</th><th>Bu ay</th><th></th></tr></thead>
+              <thead><tr><th>Ad / Sahə</th><th>Ödəniş qəbul et</th><th>Bu ay</th><th class="num">Aylıq icarə</th><th>Ödəniş günü</th><th>Növbəti ödəniş</th><th>Xəbərdarlıq</th><th>İstiqamət</th><th></th></tr></thead>
               <tbody id="tenRows"></tbody>
             </table>
           </div>
@@ -2631,6 +2641,42 @@
         : '<tr><td colspan="6" class="muted">Əməkdaş yoxdur</td></tr>';
     }
 
+    // Hansı ay üçün ödəniş qəbul edilir: bu ay tam ödənməyibsə bu ay, ödənibsə növbəti ay (əvvəlcədən)
+    function tenantPayTarget(t) {
+      const now = new Date();
+      for (let k = 0; k < 2; k++) {
+        const m = fmtDate(new Date(now.getFullYear(), now.getMonth() + k, 1)).slice(3);
+        const paid = sum(state.rentPays.filter((p) => p.month === m && p.name === t.name));
+        const left = Math.max(0, +(t.fee - paid).toFixed(2));
+        if (left > 0 || k === 1) return { m, paid, left, ahead: k === 1 };
+      }
+      return null;
+    }
+
+    async function payTenant(id, mode) {
+      const t = state.tenants.find((x) => x.id === id);
+      if (!t || !(t.fee > 0)) return;
+      const tg = tenantPayTarget(t);
+      if (!tg || tg.left <= 0) { showMsg('#tenMsg', `${t.name}: ${monthLabel(tg?.m || curMonth())} üçün icarə artıq tam ödənilib.`, 'warn'); return; }
+      let amount;
+      if (mode === 'full') {
+        amount = tg.left;
+      } else {
+        amount = Math.round((Number($(`#tp_amt_${id}`)?.value) || 0) * 100) / 100;
+        if (amount <= 0) { showMsg('#tenMsg', 'Qismən ödəniş üçün məbləği yazın.'); $(`#tp_amt_${id}`)?.focus(); return; }
+        if (amount > tg.left) { showMsg('#tenMsg', `Məbləğ qalıqdan çoxdur. ${t.name} üçün qalıq: ${money(tg.left)}.`); return; }
+      }
+      const method = $(`#tp_m_${id}`)?.value || 'Nağd';
+      state.rentPays.unshift({ id: uid(), name: t.name, month: tg.m, amount, method, date: fmtDate() });
+      const leftAfter = Math.max(0, +(tg.left - amount).toFixed(2));
+      logAction(`İcarə ${mode === 'full' || leftAfter === 0 ? 'tam' : 'qismən'} ödənişi: ${t.name} — ${n2(amount)} (${monthLabel(tg.m)})`);
+      showMsg('#tenMsg', leftAfter === 0
+        ? `${t.name}: ${monthLabel(tg.m)} icarəsi tam ödənildi (${money(amount)}, ${method}).`
+        : `${t.name}: ${money(amount)} qismən ödəniş qəbul edildi. Qalıq: ${money(leftAfter)}.`, 'ok');
+      renderAll();
+      await syncStateCloud();
+    }
+
     function dueText(i) {
       if (!i) return '';
       if (i.status === 'paid') return 'Ödənilib';
@@ -2677,12 +2723,13 @@
             return `
           <tr>
             <td><strong>${esc(t.name)}</strong></td>
-            <td><input class="mini-input" style="width:120px;" id="te_role_${id}" value="${esc(t.role)}" /></td>
+            <td class="muted">—</td>
+            <td class="muted">—</td>
             <td class="num"><input class="mini-input" id="te_fee_${id}" type="number" step="0.01" min="0" value="${t.fee}" /></td>
             <td><select class="mini-select" id="te_due_${id}">${dueDayOptions(t.dueDay)}</select></td>
             <td class="muted">—</td>
             <td><input class="mini-input" style="width:70px;" id="te_ntf_${id}" type="number" min="0" max="60" step="1" value="${t.notifyDays}" /> <span class="muted">gün</span></td>
-            <td></td>
+            <td><input class="mini-input" style="width:120px;" id="te_role_${id}" value="${esc(t.role)}" /></td>
             <td><div class="row-actions">
               <button type="button" class="btn btn-primary btn-sm" onclick="saveTenant('${id}')">Saxla</button>
               <button type="button" class="btn btn-ghost btn-sm" onclick="cancelTenantEdit()">Ləğv et</button>
@@ -2691,11 +2738,27 @@
           }
           let month = '<span class="muted">—</span>';
           if (t.fee > 0) {
-            month = paidThis >= t.fee
-              ? '<span class="pill ok">Ödənilib</span>'
-              : (info?.status === 'overdue' && info.m === m)
-                ? `<span class="pill err">Gecikir: ${n2(t.fee - paidThis)}</span>`
-                : `<span class="pill warn">Qalıq: ${n2(t.fee - paidThis)}</span>`;
+            const leftThis = Math.max(0, +(t.fee - paidThis).toFixed(2));
+            if (leftThis <= 0) month = '<span class="pill ok">Ödənilib</span>';
+            else if (paidThis > 0) month = `<span class="pill warn">Qismən: ${n2(paidThis)} / ${n2(t.fee)}</span><div class="muted">Qalıq: ${n2(leftThis)}</div>`;
+            else if (info?.status === 'overdue' && info.m === m) month = `<span class="pill err">Gecikir: ${n2(leftThis)}</span>`;
+            else month = '<span class="pill err">Ödənilməyib</span>';
+          }
+          let payCell = '<span class="muted">İcarə məbləği yoxdur</span>';
+          if (t.fee > 0) {
+            const tg = tenantPayTarget(t);
+            payCell = `
+              <div class="pay-box">
+                <div class="pay-meta">${monthLabel(tg.m)}${tg.ahead ? ' (əvvəlcədən)' : ''} · qalıq <strong>${n2(tg.left)}</strong></div>
+                <div class="row-actions">
+                  <button type="button" class="btn btn-ok btn-sm" onclick="payTenant('${id}', 'full')" ${tg.left > 0 ? '' : 'disabled'}>Tam ödə ${n2(tg.left)}</button>
+                  <select class="mini-select" id="tp_m_${id}" aria-label="Ödəniş üsulu">${methodOptions('Nağd')}</select>
+                </div>
+                <div class="row-actions">
+                  <input class="mini-input" id="tp_amt_${id}" type="number" step="0.01" min="0.01" max="${tg.left}" placeholder="Məbləğ" onkeydown="if(event.key==='Enter'){payTenant('${id}','part')}" />
+                  <button type="button" class="btn btn-ghost btn-sm" onclick="payTenant('${id}', 'part')">Qismən</button>
+                </div>
+              </div>`;
           }
           const nextCell = info
             ? `${esc(info.dueLbl)}<div class="muted" style="color:${info.status === 'overdue' ? 'var(--err)' : info.status === 'soon' ? 'var(--warn)' : ''}">${dueText(info)}</div>`
@@ -2703,19 +2766,20 @@
           return `
           <tr>
             <td><strong>${esc(t.name)}</strong></td>
-            <td>${esc(t.role || '-')}</td>
+            <td>${payCell}</td>
+            <td>${month}</td>
             <td class="num">${esc(money(t.fee))}</td>
             <td>${t.dueDay ? `Hər ayın ${t.dueDay}` : '<span class="muted">Təyin edilməyib</span>'}</td>
             <td>${nextCell}</td>
             <td>${t.dueDay ? `${t.notifyDays} gün qabaq` : '<span class="muted">—</span>'}</td>
-            <td>${month}</td>
+            <td>${esc(t.role || '-')}</td>
             <td><div class="row-actions">
               <button type="button" class="btn btn-ghost btn-sm" onclick="startTenantEdit('${id}')">Redaktə</button>
               <button type="button" class="btn btn-danger btn-sm" onclick="delItem('tenants', '${id}')">Sil</button>
             </div></td>
           </tr>`;
         }).join('')
-        : `<tr><td colspan="8" class="muted">${state.tenants.length ? 'Filtrə uyğun icarədar yoxdur' : 'İcarədar yoxdur'}</td></tr>`;
+        : `<tr><td colspan="9" class="muted">${state.tenants.length ? 'Filtrə uyğun icarədar yoxdur' : 'İcarədar yoxdur'}</td></tr>`;
     }
 
     function rJur() {
