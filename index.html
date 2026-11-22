@@ -320,6 +320,44 @@
       display: flex; align-items: center; gap: 12px; z-index: 900;
     }
 
+    .filter-bar {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+      padding: 12px; margin-bottom: 12px;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+    }
+    .filter-bar .f { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; min-width: 140px; max-width: 220px; }
+    .filter-bar .f label { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .filter-bar input, .filter-bar select { padding: 7px 9px; font-size: 12.5px; border-radius: 8px; background: var(--surface); }
+    .filter-bar .f-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+    .filter-count { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+    body.dark input[type="date"] { color-scheme: dark; }
+
+    .notif-wrap { position: relative; }
+    .bell-btn { position: relative; }
+    .bell-btn svg { width: 16px; height: 16px; }
+    .bell-count {
+      position: absolute; top: -7px; right: -7px;
+      background: var(--err); color: #fff; font-size: 10px; font-weight: 700;
+      min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px;
+      display: grid; place-items: center;
+    }
+    .notif-panel {
+      position: absolute; right: 0; top: calc(100% + 8px); width: 340px; max-height: 420px; overflow: auto;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
+      z-index: 950; padding: 6px;
+    }
+    .notif-item { width: 100%; text-align: left; background: transparent; border: 0; font-family: inherit; color: var(--text); cursor: pointer; padding: 10px; border-radius: 10px; display: flex; gap: 10px; align-items: flex-start; }
+    .notif-item:hover { background: var(--surface-2); }
+    .notif-item + .notif-item { border-top: 1px solid var(--border); }
+    .notif-item strong { font-size: 12.5px; display: block; }
+    .notif-item span { font-size: 12px; color: var(--muted); }
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+    .notif-dot.err { background: var(--err); }
+    .notif-dot.warn { background: var(--warn); }
+    .alert-card { border-color: var(--warn); }
+    .check-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 500; color: var(--text); cursor: pointer; }
+    .check-row input { width: auto; }
+
     @media (max-width: 1100px) {
       .grid-5 { grid-template-columns: repeat(3, 1fr); }
     }
@@ -558,13 +596,22 @@
       <div class="topbar">
         <h1 id="pageTitle" class="page-title">Dashboard</h1>
         <div class="top-actions">
-          <input id="qSearch" type="search" placeholder="Müştəri / rezervasiya axtar..." oninput="all()" style="width:230px;" />
+          <input id="qSearch" type="search" placeholder="Müştəri / rezervasiya axtar..." oninput="renderAll()" style="width:230px;" />
+          <div class="notif-wrap">
+            <button type="button" id="bellBtn" class="btn btn-ghost btn-sm bell-btn" onclick="toggleNotif(event)" title="Bildirişlər">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              Bildirişlər
+              <span id="bellCount" class="bell-count hidden">0</span>
+            </button>
+            <div id="notifPanel" class="notif-panel hidden"></div>
+          </div>
           <div id="todayLabel" class="today-pill">Bu gün</div>
         </div>
       </div>
 
       <!-- DASHBOARD -->
       <section id="p_dash" class="page">
+        <div id="dashAlerts"></div>
         <div class="card">
           <div class="card-head" style="margin-bottom:0;">
             <div>
@@ -656,7 +703,7 @@
               <div class="muted">Ay üzrə gəlir, xərc, usta payı və xalis mənfəət</div>
             </div>
             <div class="row-actions">
-              <input id="finMonth" type="month" onchange="all()" style="width:170px;" />
+              <input id="finMonth" type="month" onchange="renderAll()" style="width:170px;" />
               <button type="button" class="btn btn-ghost btn-sm" onclick="exportFinCsv()">CSV yüklə</button>
             </div>
           </div>
@@ -743,10 +790,14 @@
         <div class="card">
           <div class="card-head">
             <div class="card-title">Xərclər siyahısı</div>
-            <div class="row-actions">
-              <input id="expMonth" type="month" onchange="all()" style="width:170px;" />
-              <span id="expTotal" class="badge">0.00</span>
-            </div>
+            <span id="expTotal" class="badge">0.00</span>
+          </div>
+          <div class="filter-bar">
+            <div class="f"><label>Ay</label><input id="expMonth" type="month" onchange="renderAll()" /></div>
+            <div class="f"><label>Kateqoriya</label><select id="fExpCat" onchange="renderAll()"></select></div>
+            <div class="f"><label>Ödəniş üsulu</label><select id="fExpMethod" onchange="renderAll()"></select></div>
+            <div class="f"><label>Axtar</label><input id="fExpQ" type="search" placeholder="Təsvir..." oninput="renderAll()" /></div>
+            <div class="f-actions"><span id="fExpCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('exp')">Sıfırla</button></div>
           </div>
           <div class="table-wrap">
             <table>
@@ -762,7 +813,15 @@
         <div class="card">
           <div class="card-head">
             <div class="card-title">Aylıq rezervasiya hesabatı</div>
-            <input id="repMonth" type="month" onchange="all()" style="width:170px;" />
+          </div>
+          <div class="filter-bar">
+            <div class="f"><label>Ay</label><input id="repMonth" type="month" onchange="renderAll()" /></div>
+            <div class="f"><label>Status</label><select id="fRepStatus" onchange="renderAll()">
+              <option value="">Hamısı</option><option value="Gözləyir">Gözləyir</option><option value="Təsdiqləndi">Təsdiqləndi</option><option value="Tamamlandı">Tamamlandı</option><option value="Ləğv edildi">Ləğv edildi</option>
+            </select></div>
+            <div class="f"><label>Əməkdaş / İcarədar</label><select id="fRepWho" onchange="renderAll()"></select></div>
+            <div class="f"><label>Ödəniş üsulu</label><select id="fRepPay" onchange="renderAll()"></select></div>
+            <div class="f-actions"><span id="fRepCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('rep')">Sıfırla</button></div>
           </div>
           <div class="grid-3" style="margin-bottom:14px;">
             <div class="card"><div class="muted">Rezervasiya (ləğvsiz)</div><div id="repCnt" class="kpi-val">0</div></div>
@@ -783,16 +842,18 @@
         <div class="card">
           <div class="card-head">
             <div class="card-title">Rezervasiyalar</div>
-            <div class="row-actions">
-              <select id="fStatus" onchange="all()" style="width:160px;">
-                <option value="">Bütün statuslar</option>
-                <option value="Gözləyir">Gözləyir</option>
-                <option value="Təsdiqləndi">Təsdiqləndi</option>
-                <option value="Tamamlandı">Tamamlandı</option>
-                <option value="Ləğv edildi">Ləğv edildi</option>
-              </select>
-              <button type="button" class="btn btn-primary btn-sm" onclick="go('new')">+ Əlavə et</button>
-            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="go('new')">+ Əlavə et</button>
+          </div>
+          <div class="filter-bar">
+            <div class="f"><label>Status</label><select id="fStatus" onchange="renderAll()">
+              <option value="">Hamısı</option><option value="Gözləyir">Gözləyir</option><option value="Təsdiqləndi">Təsdiqləndi</option><option value="Tamamlandı">Tamamlandı</option><option value="Ləğv edildi">Ləğv edildi</option>
+            </select></div>
+            <div class="f"><label>Tarixdən</label><input id="fRezFrom" type="date" onchange="renderAll()" /></div>
+            <div class="f"><label>Tarixədək</label><input id="fRezTo" type="date" onchange="renderAll()" /></div>
+            <div class="f"><label>Əməkdaş / İcarədar</label><select id="fRezWho" onchange="renderAll()"></select></div>
+            <div class="f"><label>Xidmət</label><select id="fRezSrv" onchange="renderAll()"></select></div>
+            <div class="f"><label>Ödəniş üsulu</label><select id="fRezPay" onchange="renderAll()"></select></div>
+            <div class="f-actions"><span id="fRezCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('rez')">Sıfırla</button></div>
           </div>
           <div class="table-wrap">
             <table>
@@ -861,6 +922,11 @@
         </div>
         <div class="card">
           <div class="card-title" style="margin-bottom:10px;">Xidmətlər siyahısı</div>
+          <div class="filter-bar">
+            <div class="f"><label>Axtar</label><input id="fSrvQ" type="search" placeholder="Xidmət adı..." oninput="renderAll()" /></div>
+            <div class="f"><label>Kateqoriya</label><select id="fSrvCat" onchange="renderAll()"></select></div>
+            <div class="f-actions"><span id="fSrvCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('srv')">Sıfırla</button></div>
+          </div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Xidmət</th><th>Kateqoriya</th><th class="num">Qiymət</th><th></th></tr></thead>
@@ -913,6 +979,13 @@
         </div>
         <div class="card">
           <div class="card-title" style="margin-bottom:10px;">Əməkdaşlar</div>
+          <div class="filter-bar">
+            <div class="f"><label>Axtar</label><input id="fStaffQ" type="search" placeholder="Ad / vəzifə..." oninput="renderAll()" /></div>
+            <div class="f"><label>Ödəniş növü</label><select id="fStaffType" onchange="renderAll()">
+              <option value="">Hamısı</option><option value="percent">Faiz</option><option value="salary">Aylıq maaş</option>
+            </select></div>
+            <div class="f-actions"><span id="fStaffCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('staff')">Sıfırla</button></div>
+          </div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Ad</th><th>Vəzifə</th><th>Ödəniş şərti</th><th class="num">Bu ay dövriyyə</th><th class="num">Bu ay hesablanan</th><th></th></tr></thead>
@@ -930,15 +1003,29 @@
             <div class="field"><label>Ad / Sahə *</label><input id="tName" type="text" required /></div>
             <div class="field"><label>İstiqamət</label><input id="tRole" type="text" placeholder="Məs: Vizaj / Dırnaq" /></div>
             <div class="field"><label>Aylıq icarə</label><input id="tFee" type="number" step="0.01" min="0" value="0" /></div>
+            <div class="field"><label>Ödəniş günü (ayın neçəsi)</label><select id="tDue"></select></div>
+            <div class="field"><label>Neçə gün qalmış xəbər verilsin</label><input id="tNotify" type="number" min="0" max="60" step="1" /></div>
             <div style="grid-column:1/-1;"><button type="submit" class="btn btn-primary btn-sm">+ Əlavə et</button></div>
           </form>
           <div class="info-note">İcarədarın müştərilərindən gələn pul salonun gəlirinə yazılmır. Salon yalnız aylıq icarə alır. İcarə ödənişini “Maliyyə icmalı” bölməsində qəbul edin.</div>
         </div>
         <div class="card">
           <div class="card-title" style="margin-bottom:10px;">İcarədarlar</div>
+          <div class="filter-bar">
+            <div class="f"><label>Axtar</label><input id="fTenQ" type="search" placeholder="Ad / istiqamət..." oninput="renderAll()" /></div>
+            <div class="f"><label>Vəziyyət</label><select id="fTenStatus" onchange="renderAll()">
+              <option value="">Hamısı</option>
+              <option value="overdue">Ödəniş gecikir</option>
+              <option value="soon">Ödəniş yaxınlaşır</option>
+              <option value="unpaid">Bu ay ödənilməyib</option>
+              <option value="paid">Bu ay ödənilib</option>
+              <option value="nodate">Ödəniş günü təyin edilməyib</option>
+            </select></div>
+            <div class="f-actions"><span id="fTenCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('ten')">Sıfırla</button></div>
+          </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Ad / Sahə</th><th>İstiqamət</th><th class="num">Aylıq icarə</th><th>Bu ay</th><th></th></tr></thead>
+              <thead><tr><th>Ad / Sahə</th><th>İstiqamət</th><th class="num">Aylıq icarə</th><th>Ödəniş günü</th><th>Növbəti ödəniş</th><th>Xəbərdarlıq</th><th>Bu ay</th><th></th></tr></thead>
               <tbody id="tenRows"></tbody>
             </table>
           </div>
@@ -949,6 +1036,13 @@
       <section id="p_cust" class="page hidden">
         <div class="card">
           <div class="card-title" style="margin-bottom:10px;">Müştərilər</div>
+          <div class="filter-bar">
+            <div class="f"><label>Axtar</label><input id="fCustQ" type="search" placeholder="Ad / telefon..." oninput="renderAll()" /></div>
+            <div class="f"><label>Sıralama</label><select id="fCustSort" onchange="renderAll()">
+              <option value="sum">Ən çox ödəyən</option><option value="cnt">Ən çox gələn</option><option value="last">Son gələn</option><option value="name">Ad (A–Z)</option>
+            </select></div>
+            <div class="f-actions"><span id="fCustCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('cust')">Sıfırla</button></div>
+          </div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Müştəri</th><th>Telefon</th><th class="num">Rezervasiya</th><th>Son gəliş</th><th class="num">Ödəniş (tamamlanmış)</th></tr></thead>
@@ -970,6 +1064,13 @@
         </div>
         <div class="card">
           <div class="card-title" style="margin-bottom:10px;">Reminder siyahısı</div>
+          <div class="filter-bar">
+            <div class="f"><label>Axtar</label><input id="fRemQ" type="search" placeholder="Mətn..." oninput="renderAll()" /></div>
+            <div class="f"><label>Status</label><select id="fRemStatus" onchange="renderAll()">
+              <option value="">Hamısı</option><option value="active">Aktiv</option><option value="due">Vaxtı çatıb</option><option value="done">Bağlı</option>
+            </select></div>
+            <div class="f-actions"><span id="fRemCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('rem')">Sıfırla</button></div>
+          </div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Mətn</th><th>Tarix</th><th>Status</th><th></th></tr></thead>
@@ -983,6 +1084,11 @@
       <section id="p_jur" class="page hidden">
         <div class="card">
           <div class="card-title" style="margin-bottom:10px;">Əməliyyat jurnalı</div>
+          <div class="filter-bar">
+            <div class="f"><label>Axtar</label><input id="fJurQ" type="search" placeholder="Əməliyyat..." oninput="renderAll()" /></div>
+            <div class="f"><label>Tarix</label><input id="fJurDate" type="date" onchange="renderAll()" /></div>
+            <div class="f-actions"><span id="fJurCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('jur')">Sıfırla</button></div>
+          </div>
           <div id="jurList"></div>
         </div>
       </section>
@@ -994,6 +1100,16 @@
           <form id="fSet" action="javascript:void(0)" onsubmit="saveSettings(event)" class="grid-2">
             <div class="field"><label>Salon adı</label><input id="setSalonName" type="text" placeholder="Salon" /></div>
             <div class="field"><label>Valyuta</label><input id="setCurrency" type="text" value="AZN" /></div>
+            <div class="field">
+              <label>İcarə xəbərdarlığı: ödənişdən neçə gün qabaq</label>
+              <input id="setNotifyDays" type="number" min="0" max="60" step="1" value="3" />
+              <label class="check-row" style="margin-top:8px;"><input id="setNotifyAll" type="checkbox" /> Bütün mövcud icarədarlara da tətbiq et</label>
+            </div>
+            <div class="field">
+              <label>Brauzer bildirişləri</label>
+              <label class="check-row"><input id="setBrowserNotif" type="checkbox" /> Panel açıq olanda kompüter / telefon bildirişi göstər</label>
+              <div class="muted" style="margin-top:6px;">Bildirişlər paneldə zəng ikonunda və Dashboard-da həmişə görünür.</div>
+            </div>
             <div style="grid-column:1/-1;"><button type="submit" class="btn btn-primary">Ayarları saxla</button></div>
           </form>
           <div id="setMsg" class="msg hidden"></div>
@@ -1089,6 +1205,16 @@
     const money = (v) => `${n2(v)} ${getCurrency()}`;
     const sum = (arr, f = (x) => x.amount) => arr.reduce((a, b) => a + (Number(f(b)) || 0), 0);
     const isTenantRec = (r) => String(r.assignee || '').startsWith('İcarədar:');
+    function clampInt(v, min, max, def) {
+      if (v === '' || v === null || v === undefined) return def;
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : def;
+    }
+    const val = (sel) => ($(sel)?.value || '').trim();
+    function dateInputMs(sel) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(val(sel));
+      return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime() : null;
+    }
 
     function showMsg(sel, text, mode = 'err') {
       const el = $(sel);
@@ -1153,7 +1279,7 @@
 
     function defaultState() {
       return {
-        settings: { salonName: 'Salon', currency: 'AZN', theme: 'light' },
+        settings: { salonName: 'Salon', currency: 'AZN', theme: 'light', rentNotifyDays: 3, browserNotif: false },
         cats: [...DEFAULT_CATS],
         catsVersion: CATS_VERSION,
         expCats: ['Kommunal', 'Material', 'Salon icarəsi', 'Reklam', 'Vergi', 'Digər'],
@@ -1212,11 +1338,15 @@
         price: Math.max(0, Number(s.price) || 0)
       })).filter((s) => s.name);
 
+      merged.settings.rentNotifyDays = clampInt(merged.settings.rentNotifyDays, 0, 60, 3);
+      merged.settings.browserNotif = !!merged.settings.browserNotif;
       merged.tenants = withIds(merged.tenants).map((t) => ({
         id: t.id,
         name: String(t.name || '').trim(),
         role: String(t.role || ''),
-        fee: Math.max(0, Number(t.fee) || 0)
+        fee: Math.max(0, Number(t.fee) || 0),
+        dueDay: clampInt(t.dueDay, 1, 31, null),
+        notifyDays: clampInt(t.notifyDays, 0, 60, merged.settings.rentNotifyDays)
       })).filter((t) => t.name);
 
       merged.staff = withIds(merged.staff).map((s) => {
@@ -1397,7 +1527,7 @@
       $$('.nav-item').forEach((btn) => btn.classList.toggle('active', btn.dataset.p === p));
       $('#pageTitle').textContent = TITLES[p] || 'Salon Panel';
       if (p === 'new' || p === 'exp') fillSelects();
-      all();
+      renderAll();
       window.scrollTo({ top: 0 });
     }
 
@@ -1501,13 +1631,16 @@
       setTheme(state.settings?.theme || 'light', true);
       $('#setSalonName').value = state.settings?.salonName || 'Salon';
       $('#setCurrency').value = getCurrency();
+      $('#setNotifyDays').value = state.settings.rentNotifyDays;
+      $('#setBrowserNotif').checked = !!state.settings.browserNotif;
+      $('#tNotify').value = state.settings.rentNotifyDays;
       $('#sideSalonTitle').textContent = state.settings?.salonName || 'Salon';
       $('#rDate').value = fmtDate();
       $('#rmDate').value = fmtDate();
       $('#eDate').value = fmtDate();
       ['#finMonth', '#expMonth', '#repMonth'].forEach((s) => { if (!$(s).value) $(s).value = monthInputDefault(); });
       fillSelects();
-      all();
+      renderAll();
 
       if (!isLocalPreview && sb) subscribeRealtime();
     }
@@ -1526,7 +1659,7 @@
               state = normalizeState(payload.new.data);
               saveLocal();
               fillSelects();
-              all();
+              renderAll();
             }
           }).subscribe((_status, err) => {
             if (err) setCloudStatus('warn', 'Realtime bloklandı, REST aktivdir');
@@ -1543,7 +1676,7 @@
               if (idx >= 0) recs[idx] = item; else recs.unshift(item);
             }
             saveLocal();
-            all();
+            renderAll();
           }).subscribe((_status, err) => {
             if (err) setCloudStatus('warn', 'Realtime bloklandı, REST aktivdir');
           });
@@ -1567,6 +1700,50 @@
       $('#rAssignee').innerHTML = '<option value="">Seçilməyib</option>' + opts.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
       if (!$('#rPay').options.length) $('#rPay').innerHTML = methodOptions('Nağd');
       if (!$('#eMethod').options.length) $('#eMethod').innerHTML = methodOptions('Nağd');
+      if (!$('#tDue').options.length) $('#tDue').innerHTML = dueDayOptions(null);
+      if ($('#tNotify').value === '') $('#tNotify').value = defaultNotify();
+    }
+
+    function dueDayOptions(selected) {
+      let html = `<option value="" ${selected ? '' : 'selected'}>Təyin edilməyib</option>`;
+      for (let d = 1; d <= 31; d++) html += `<option value="${d}" ${Number(selected) === d ? 'selected' : ''}>Hər ayın ${d}</option>`;
+      return html;
+    }
+
+    function setOptions(sel, items, allLabel) {
+      const el = $(sel);
+      if (!el) return;
+      const cur = el.value;
+      el.innerHTML = `<option value="">${esc(allLabel)}</option>` + items.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+      if ([...el.options].some((o) => o.value === cur)) el.value = cur;
+    }
+
+    function fillFilterSelects() {
+      const who = Array.from(new Set([
+        ...state.staff.map((x) => `Əməkdaş: ${x.name}`),
+        ...state.tenants.map((x) => `İcarədar: ${x.name}`),
+        ...recs.map((r) => r.assignee).filter(Boolean)
+      ])).map((o) => [o, o]);
+      who.push(['__none', 'Təyin edilməyib']);
+      const srvs = Array.from(new Set([...state.services.map((s) => s.name), ...recs.map((r) => r.srv).filter(Boolean)])).sort((a, b) => a.localeCompare(b, 'az'));
+      const methods = PAY_METHODS.map((m) => [m, m]);
+      setOptions('#fRezWho', who, 'Hamısı');
+      setOptions('#fRepWho', who, 'Hamısı');
+      setOptions('#fRezSrv', srvs.map((x) => [x, x]), 'Hamısı');
+      setOptions('#fRezPay', methods, 'Hamısı');
+      setOptions('#fRepPay', methods, 'Hamısı');
+      setOptions('#fExpMethod', methods, 'Hamısı');
+      setOptions('#fExpCat', state.expCats.map((c) => [c, c]), 'Hamısı');
+      setOptions('#fSrvCat', state.cats.map((c) => [c, c]), 'Hamısı');
+    }
+
+    function resetFilters(page) {
+      $$(`#p_${page} .filter-bar input, #p_${page} .filter-bar select`).forEach((el) => {
+        if (el.type === 'month') el.value = monthInputDefault();
+        else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+        else el.value = '';
+      });
+      renderAll();
     }
 
     function syncSrvPrice() {
@@ -1616,7 +1793,7 @@
       r[field] = value;
       logAction(field === 'status' ? `Status dəyişdi (${r.cust}): ${value}` : `Ödəniş üsulu dəyişdi (${r.cust}): ${value}`);
       await Promise.all([upsertRecordCloud(r), syncStateCloud()]);
-      all();
+      renderAll();
     }
 
     async function delRez(id) {
@@ -1626,7 +1803,7 @@
       lastDeleted = { kind: 'rec', item: removed };
       logAction(`Rezervasiya silindi: ${removed.cust}`);
       showUndo(`"${removed.cust}" silindi`);
-      all();
+      renderAll();
       await Promise.all([deleteRecordCloud(id), syncStateCloud()]);
     }
 
@@ -1656,7 +1833,7 @@
       logAction(`Silindi: ${itemLabel(removed)}`);
       showUndo(`"${itemLabel(removed)}" silindi`);
       fillSelects();
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1671,14 +1848,14 @@
         recs.unshift(d.item);
         logAction(`Rezervasiya bərpa edildi: ${d.item.cust}`);
         fillSelects();
-        all();
+        renderAll();
         await Promise.all([upsertRecordCloud(d.item), syncStateCloud()]);
       } else if (d.kind === 'list') {
         const arr = state[d.key];
         arr.splice(Math.min(d.index, arr.length), 0, d.item);
         logAction(`Bərpa edildi: ${itemLabel(d.item)}`);
         fillSelects();
-        all();
+        renderAll();
         await syncStateCloud();
       }
     }
@@ -1693,7 +1870,7 @@
       logAction(`Xidmət əlavə edildi: ${name}`);
       $('#fS').reset();
       fillSelects();
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1707,7 +1884,7 @@
       }
       $(`#${inputId}`).value = '';
       fillSelects();
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1720,7 +1897,7 @@
       if (!state[key].length) state[key] = [...defaultState()[key]];
       logAction(`Kateqoriya silindi: ${name}`);
       fillSelects();
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1734,7 +1911,7 @@
       state.rems.unshift({ id: uid(), text, date, done: false });
       logAction(`Reminder əlavə edildi: ${text}`);
       $('#rmText').value = '';
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1743,7 +1920,7 @@
       if (!r) return;
       r.done = !r.done;
       logAction(`Reminder ${r.done ? 'bağlandı' : 'açıldı'}: ${r.text}`);
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1766,7 +1943,7 @@
       logAction(`Əməkdaş əlavə edildi: ${name}`);
       $('#fV').reset();
       fillSelects();
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1778,11 +1955,18 @@
         alertInline('#fT', 'Bu adda icarədar artıq var.');
         return;
       }
-      state.tenants.push({ id: uid(), name, role: ($('#tRole').value || '').trim(), fee: Math.max(0, Number($('#tFee').value) || 0) });
+      state.tenants.push({
+        id: uid(), name,
+        role: ($('#tRole').value || '').trim(),
+        fee: Math.max(0, Number($('#tFee').value) || 0),
+        dueDay: clampInt($('#tDue').value, 1, 31, null),
+        notifyDays: clampInt($('#tNotify').value, 0, 60, defaultNotify())
+      });
       logAction(`İcarədar əlavə edildi: ${name}`);
       $('#fT').reset();
+      $('#tNotify').value = defaultNotify();
       fillSelects();
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1828,7 +2012,7 @@
       $('#eAmount').value = '';
       $('#eDesc').value = '';
       showMsg('#expMsg', 'Xərc yadda saxlanıldı.', 'ok');
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1880,7 +2064,7 @@
       const m = monthFromInput('#finMonth');
       state.staffPays.unshift({ id: uid(), name: s.name, month: m, amount, method: $(`#pm_${id}`).value, date: fmtDate() });
       logAction(`Ustaya ödəniş: ${s.name} — ${n2(amount)} (${monthLabel(m)})`);
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1891,7 +2075,7 @@
       const m = monthFromInput('#finMonth');
       state.rentPays.unshift({ id: uid(), name: t.name, month: m, amount, method: $(`#pm_${id}`).value, date: fmtDate() });
       logAction(`İcarə qəbul edildi: ${t.name} — ${n2(amount)} (${monthLabel(m)})`);
-      all();
+      renderAll();
       await syncStateCloud();
     }
 
@@ -1939,10 +2123,25 @@
       e?.preventDefault?.();
       state.settings.salonName = ($('#setSalonName').value || '').trim() || 'Salon';
       state.settings.currency = ($('#setCurrency').value || '').trim() || 'AZN';
+      state.settings.rentNotifyDays = clampInt($('#setNotifyDays').value, 0, 60, 3);
+      $('#setNotifyDays').value = state.settings.rentNotifyDays;
+      if ($('#setNotifyAll').checked) {
+        state.tenants.forEach((t) => { t.notifyDays = state.settings.rentNotifyDays; });
+        $('#setNotifyAll').checked = false;
+      }
+      const wantBrowser = $('#setBrowserNotif').checked;
+      if (wantBrowser && 'Notification' in window && Notification.permission === 'default') {
+        try { await Notification.requestPermission(); } catch (_) {}
+      }
+      state.settings.browserNotif = wantBrowser;
+      if (wantBrowser && (!('Notification' in window) || Notification.permission === 'denied')) {
+        showMsg('#setMsg', 'Brauzer bildirişlərə icazə vermir. Brauzerin sayt ayarlarından icazə verin. Bildirişlər paneldə görünməyə davam edəcək.', 'warn');
+      }
+      $('#tNotify').value = state.settings.rentNotifyDays;
       $('#sideSalonTitle').textContent = state.settings.salonName;
       logAction('Salon ayarları yeniləndi');
       fillSelects();
-      all();
+      renderAll();
       await syncStateCloud();
       showMsg('#setMsg', 'Ayarlar yadda saxlanıldı.', 'ok');
     }
@@ -1957,10 +2156,10 @@
     }
 
     function filteredRecs() {
-      const q = ($('#qSearch')?.value || '').trim().toLowerCase();
+      const q = ($('#qSearch')?.value || '').trim().toLocaleLowerCase('az');
       if (!q) return recs;
       return recs.filter((r) =>
-        [r.cust, r.phone, r.srv, r.date, r.assignee].some((v) => String(v || '').toLowerCase().includes(q))
+        [r.cust, r.phone, r.srv, r.date, r.assignee].some((v) => String(v || '').toLocaleLowerCase('az').includes(q))
       );
     }
 
@@ -2133,10 +2332,13 @@
 
     function rExp() {
       const m = monthFromInput('#expMonth');
+      const cat = val('#fExpCat'), meth = val('#fExpMethod'), q = val('#fExpQ').toLocaleLowerCase('az');
       const list = state.expenses
         .filter((x) => monthOfDate(x.date) === m)
+        .filter((x) => (!cat || x.cat === cat) && (!meth || x.method === meth) && (!q || `${x.desc} ${x.cat}`.toLocaleLowerCase('az').includes(q)))
         .sort((a, b) => (parseD(b.date)?.getTime() || 0) - (parseD(a.date)?.getTime() || 0));
       $('#expTotal').textContent = `${monthLabel(m)}: ${money(sum(list))}`;
+      $('#fExpCount').textContent = `${list.length} qeyd`;
       $('#expRows').innerHTML = list.length
         ? list.map((x) => `
           <tr>
@@ -2152,10 +2354,22 @@
 
     function rRez() {
       const cur = getCurrency();
-      const stFilter = $('#fStatus').value || '';
+      const stFilter = val('#fStatus');
+      const from = dateInputMs('#fRezFrom'), to = dateInputMs('#fRezTo');
+      const who = val('#fRezWho'), srv = val('#fRezSrv'), pay = val('#fRezPay');
       const list = filteredRecs()
         .filter((r) => !stFilter || r.status === stFilter)
+        .filter((r) => {
+          const d = parseD(r.date)?.getTime() ?? null;
+          if (from !== null && (d === null || d < from)) return false;
+          if (to !== null && (d === null || d > to)) return false;
+          if (who === '__none' ? !!r.assignee : (who && r.assignee !== who)) return false;
+          if (srv && r.srv !== srv) return false;
+          if (pay && r.payMethod !== pay) return false;
+          return true;
+        })
         .sort((a, b) => recSortKey(b) - recSortKey(a));
+      $('#fRezCount').textContent = `${list.length} qeyd · ${money(sum(list.filter((r) => r.status === 'Tamamlandı'), (r) => r.price))} tamamlanmış`;
       $('#rezRows').innerHTML = list.length
         ? list.map((r) => `
           <tr>
@@ -2178,7 +2392,12 @@
     function rRep() {
       const cur = getCurrency();
       const m = monthFromInput('#repMonth');
-      const list = recs.filter((r) => monthOfDate(r.date) === m).sort((a, b) => recSortKey(a) - recSortKey(b));
+      const st = val('#fRepStatus'), who = val('#fRepWho'), pay = val('#fRepPay');
+      const list = recs
+        .filter((r) => monthOfDate(r.date) === m)
+        .filter((r) => (!st || r.status === st) && (!pay || r.payMethod === pay) && (who === '__none' ? !r.assignee : (!who || r.assignee === who)))
+        .sort((a, b) => recSortKey(a) - recSortKey(b));
+      $('#fRepCount').textContent = `${list.length} qeyd`;
       $('#repCnt').textContent = list.filter((r) => r.status !== 'Ləğv edildi').length;
       $('#repDone').textContent = n2(sum(list.filter((r) => r.status === 'Tamamlandı'), (r) => r.price));
       $('#repCancel').textContent = list.filter((r) => r.status === 'Ləğv edildi').length;
@@ -2198,15 +2417,18 @@
 
     function rSrv() {
       const cur = getCurrency();
-      $('#srvRows').innerHTML = state.services.length
-        ? state.services.map((s) => `
+      const q = val('#fSrvQ').toLocaleLowerCase('az'), cat = val('#fSrvCat');
+      const list = state.services.filter((s) => (!cat || s.cat === cat) && (!q || s.name.toLocaleLowerCase('az').includes(q)));
+      $('#fSrvCount').textContent = `${list.length} / ${state.services.length} xidmət`;
+      $('#srvRows').innerHTML = list.length
+        ? list.map((s) => `
           <tr>
             <td><strong>${esc(s.name)}</strong></td>
             <td>${esc(s.cat)}</td>
             <td class="num">${n2(s.price)} ${esc(cur)}</td>
             <td><button type="button" class="btn btn-danger btn-sm" onclick="delItem('services', '${esc(s.id)}')">Sil</button></td>
           </tr>`).join('')
-        : '<tr><td colspan="4" class="muted">Xidmət əlavə edilməyib</td></tr>';
+        : `<tr><td colspan="4" class="muted">${state.services.length ? 'Filtrə uyğun xidmət yoxdur' : 'Xidmət əlavə edilməyib'}</td></tr>`;
     }
 
     function rCat() {
@@ -2231,7 +2453,17 @@
         if (r.phone) it.phone = r.phone;
         map.set(key, it);
       });
-      const rows = Array.from(map.values()).sort((a, b) => b.sum - a.sum);
+      const q = val('#fCustQ').toLocaleLowerCase('az'), sort = val('#fCustSort') || 'sum';
+      const sorters = {
+        sum: (a, b) => b.sum - a.sum,
+        cnt: (a, b) => b.cnt - a.cnt,
+        last: (a, b) => b.last - a.last,
+        name: (a, b) => a.name.localeCompare(b.name, 'az')
+      };
+      const rows = Array.from(map.values())
+        .filter((c) => !q || `${c.name} ${c.phone}`.toLocaleLowerCase('az').includes(q))
+        .sort(sorters[sort] || sorters.sum);
+      $('#fCustCount').textContent = `${rows.length} müştəri`;
       $('#custRows').innerHTML = rows.length
         ? rows.map((c) => `
           <tr>
@@ -2245,8 +2477,18 @@
     }
 
     function rRem() {
-      $('#remRows').innerHTML = state.rems.length
-        ? state.rems.map((rm) => `
+      const q = val('#fRemQ').toLocaleLowerCase('az'), st = val('#fRemStatus');
+      const today = startOfToday();
+      const list = state.rems.filter((rm) => {
+        if (q && !String(rm.text).toLocaleLowerCase('az').includes(q)) return false;
+        if (st === 'active') return !rm.done;
+        if (st === 'done') return rm.done;
+        if (st === 'due') { const d = parseD(rm.date); return !rm.done && d && d.getTime() <= today; }
+        return true;
+      });
+      $('#fRemCount').textContent = `${list.length} qeyd`;
+      $('#remRows').innerHTML = list.length
+        ? list.map((rm) => `
           <tr>
             <td>${esc(rm.text)}</td>
             <td>${esc(rm.date)}</td>
@@ -2263,8 +2505,11 @@
 
     function rStaff() {
       const f = calcFin(curMonth());
-      $('#staffRows').innerHTML = f.staffRows.length
-        ? f.staffRows.map((x) => `
+      const q = val('#fStaffQ').toLocaleLowerCase('az'), type = val('#fStaffType');
+      const list = f.staffRows.filter((x) => (!type || x.s.payType === type) && (!q || `${x.s.name} ${x.s.role}`.toLocaleLowerCase('az').includes(q)));
+      $('#fStaffCount').textContent = `${list.length} əməkdaş`;
+      $('#staffRows').innerHTML = list.length
+        ? list.map((x) => `
           <tr>
             <td><strong>${esc(x.s.name)}</strong></td>
             <td>${esc(x.s.role || '-')}</td>
@@ -2276,22 +2521,99 @@
         : '<tr><td colspan="6" class="muted">Əməkdaş yoxdur</td></tr>';
     }
 
+    function dueText(i) {
+      if (!i) return '';
+      if (i.status === 'paid') return 'Ödənilib';
+      if (i.days < 0) return `${-i.days} gün gecikir`;
+      if (i.days === 0) return 'Bu gün';
+      return `${i.days} gün qalıb`;
+    }
+
+    let editingTenant = null;
+    function startTenantEdit(id) { editingTenant = id; rTen(); }
+    function cancelTenantEdit() { editingTenant = null; rTen(); }
+
+    async function saveTenant(id) {
+      const t = state.tenants.find((x) => x.id === id);
+      if (!t) return;
+      t.role = ($(`#te_role_${id}`).value || '').trim();
+      t.fee = Math.max(0, Number($(`#te_fee_${id}`).value) || 0);
+      t.dueDay = clampInt($(`#te_due_${id}`).value, 1, 31, null);
+      t.notifyDays = clampInt($(`#te_ntf_${id}`).value, 0, 60, defaultNotify());
+      editingTenant = null;
+      logAction(`İcarədar yeniləndi: ${t.name}`);
+      renderAll();
+      await syncStateCloud();
+    }
+
     function rTen() {
-      const f = calcFin(curMonth());
-      $('#tenRows').innerHTML = f.tenantRows.length
-        ? f.tenantRows.map((x) => `
+      const m = curMonth();
+      const q = val('#fTenQ').toLocaleLowerCase('az'), st = val('#fTenStatus');
+      const rows = state.tenants
+        .map((t) => ({ t, info: tenantDueInfo(t), paidThis: sum(state.rentPays.filter((p) => p.month === m && p.name === t.name)) }))
+        .filter(({ t, info, paidThis }) => {
+          if (q && !`${t.name} ${t.role}`.toLocaleLowerCase('az').includes(q)) return false;
+          if (!st) return true;
+          if (st === 'nodate') return !t.dueDay;
+          if (st === 'paid') return t.fee > 0 && paidThis >= t.fee;
+          if (st === 'unpaid') return t.fee > 0 && paidThis < t.fee;
+          return info?.status === st;
+        });
+      $('#fTenCount').textContent = `${rows.length} icarədar`;
+      $('#tenRows').innerHTML = rows.length
+        ? rows.map(({ t, info, paidThis }) => {
+          const id = esc(t.id);
+          if (t.id === editingTenant) {
+            return `
           <tr>
-            <td><strong>${esc(x.t.name)}</strong></td>
-            <td>${esc(x.t.role || '-')}</td>
-            <td class="num">${esc(money(x.t.fee))}</td>
-            <td>${x.left <= 0 ? '<span class="pill ok">Ödənilib</span>' : `<span class="pill err">Borc: ${n2(x.left)}</span>`}</td>
-            <td><button type="button" class="btn btn-danger btn-sm" onclick="delItem('tenants', '${esc(x.t.id)}')">Sil</button></td>
-          </tr>`).join('')
-        : '<tr><td colspan="5" class="muted">İcarədar yoxdur</td></tr>';
+            <td><strong>${esc(t.name)}</strong></td>
+            <td><input class="mini-input" style="width:120px;" id="te_role_${id}" value="${esc(t.role)}" /></td>
+            <td class="num"><input class="mini-input" id="te_fee_${id}" type="number" step="0.01" min="0" value="${t.fee}" /></td>
+            <td><select class="mini-select" id="te_due_${id}">${dueDayOptions(t.dueDay)}</select></td>
+            <td class="muted">—</td>
+            <td><input class="mini-input" style="width:70px;" id="te_ntf_${id}" type="number" min="0" max="60" step="1" value="${t.notifyDays}" /> <span class="muted">gün</span></td>
+            <td></td>
+            <td><div class="row-actions">
+              <button type="button" class="btn btn-primary btn-sm" onclick="saveTenant('${id}')">Saxla</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="cancelTenantEdit()">Ləğv et</button>
+            </div></td>
+          </tr>`;
+          }
+          let month = '<span class="muted">—</span>';
+          if (t.fee > 0) {
+            month = paidThis >= t.fee
+              ? '<span class="pill ok">Ödənilib</span>'
+              : (info?.status === 'overdue' && info.m === m)
+                ? `<span class="pill err">Gecikir: ${n2(t.fee - paidThis)}</span>`
+                : `<span class="pill warn">Qalıq: ${n2(t.fee - paidThis)}</span>`;
+          }
+          const nextCell = info
+            ? `${esc(info.dueLbl)}<div class="muted" style="color:${info.status === 'overdue' ? 'var(--err)' : info.status === 'soon' ? 'var(--warn)' : ''}">${dueText(info)}</div>`
+            : '<span class="muted">—</span>';
+          return `
+          <tr>
+            <td><strong>${esc(t.name)}</strong></td>
+            <td>${esc(t.role || '-')}</td>
+            <td class="num">${esc(money(t.fee))}</td>
+            <td>${t.dueDay ? `Hər ayın ${t.dueDay}` : '<span class="muted">Təyin edilməyib</span>'}</td>
+            <td>${nextCell}</td>
+            <td>${t.dueDay ? `${t.notifyDays} gün qabaq` : '<span class="muted">—</span>'}</td>
+            <td>${month}</td>
+            <td><div class="row-actions">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="startTenantEdit('${id}')">Redaktə</button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="delItem('tenants', '${id}')">Sil</button>
+            </div></td>
+          </tr>`;
+        }).join('')
+        : `<tr><td colspan="8" class="muted">${state.tenants.length ? 'Filtrə uyğun icarədar yoxdur' : 'İcarədar yoxdur'}</td></tr>`;
     }
 
     function rJur() {
-      const list = state.journal || [];
+      const q = val('#fJurQ').toLocaleLowerCase('az');
+      const dMs = dateInputMs('#fJurDate');
+      const dLbl = dMs !== null ? fmtDate(new Date(dMs)) : '';
+      const list = (state.journal || []).filter((j) => (!q || String(j.text).toLocaleLowerCase('az').includes(q)) && (!dLbl || j.date === dLbl));
+      $('#fJurCount').textContent = `${list.length} qeyd`;
       $('#jurList').innerHTML = list.length
         ? list.map((j) => `
           <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;">
@@ -2301,8 +2623,135 @@
         : '<div class="muted">Jurnal boşdur</div>';
     }
 
-    function all() {
+    /* ---------- İcarə ödəniş günü və bildirişlər ---------- */
+
+    const DAY_MS = 86400000;
+    const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const defaultNotify = () => clampInt(state.settings?.rentNotifyDays, 0, 60, 3);
+
+    // Ödənilməmiş ən yaxın ayın ödəniş tarixi (bu ay ödənilibsə, növbəti ay)
+    function tenantDueInfo(t) {
+      if (!t.dueDay || !(t.fee > 0)) return null;
+      const today = startOfToday();
+      const now = new Date();
+      let info = null;
+      for (let k = 0; k < 2; k++) {
+        const first = new Date(now.getFullYear(), now.getMonth() + k, 1);
+        const dim = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+        const due = new Date(first.getFullYear(), first.getMonth(), Math.min(t.dueDay, dim));
+        const m = fmtDate(due).slice(3);
+        const paid = sum(state.rentPays.filter((p) => p.month === m && p.name === t.name));
+        const left = Math.max(0, t.fee - paid);
+        info = { due, dueLbl: fmtDate(due), m, paid, left, days: Math.round((due.getTime() - today) / DAY_MS) };
+        if (left > 0) break;
+      }
+      const notifyDays = clampInt(t.notifyDays, 0, 60, defaultNotify());
+      let status = 'scheduled';
+      if (info.left <= 0) status = 'paid';
+      else if (info.days < 0) status = 'overdue';
+      else if (info.days <= notifyDays) status = 'soon';
+      return { ...info, status, notifyDays };
+    }
+
+    let lastNotifs = [];
+
+    function getNotifications() {
+      const items = [];
+      const cur = getCurrency();
+      state.tenants.forEach((t) => {
+        const i = tenantDueInfo(t);
+        if (!i || (i.status !== 'overdue' && i.status !== 'soon')) return;
+        const when = i.days < 0 ? `${-i.days} gün gecikir` : i.days === 0 ? 'bu gün' : `${i.days} gün sonra`;
+        items.push({
+          key: `rent_${t.id}_${i.m}`,
+          level: i.status === 'overdue' ? 'err' : 'warn',
+          title: `İcarə ödənişi: ${t.name}`,
+          text: `${n2(i.left)} ${cur} — ödəniş tarixi ${i.dueLbl} (${when})`,
+          page: 'fin', month: i.m, sort: i.days
+        });
+      });
+      const today = startOfToday();
+      state.rems.forEach((r) => {
+        if (r.done) return;
+        const d = parseD(r.date);
+        if (!d || d.getTime() > today) return;
+        const days = Math.round((d.getTime() - today) / DAY_MS);
+        items.push({ key: `rem_${r.id}`, level: days < 0 ? 'err' : 'warn', title: 'Reminder', text: `${r.text} (${r.date})`, page: 'rem', sort: days });
+      });
+      return items.sort((a, b) => a.sort - b.sort);
+    }
+
+    function notifItemsHtml(items) {
+      return items.map((it, idx) => `
+        <button type="button" class="notif-item" onclick="openNotif(${idx})">
+          <span class="notif-dot ${it.level}"></span>
+          <div><strong>${esc(it.title)}</strong><span>${esc(it.text)}</span></div>
+        </button>`).join('');
+    }
+
+    function renderNotifications() {
+      const items = getNotifications();
+      lastNotifs = items;
+      const cnt = $('#bellCount');
+      cnt.textContent = items.length;
+      cnt.classList.toggle('hidden', !items.length);
+      $('#notifPanel').innerHTML = items.length
+        ? notifItemsHtml(items)
+        : '<div class="muted" style="padding:12px;">Yeni bildiriş yoxdur</div>';
+      $('#dashAlerts').innerHTML = items.length
+        ? `<div class="card alert-card">
+            <div class="card-head"><div class="card-title">Diqqət tələb edənlər</div><span class="badge">${items.length}</span></div>
+            ${notifItemsHtml(items)}
+          </div>`
+        : '';
+      pushBrowserNotifs(items);
+    }
+
+    function openNotif(idx) {
+      const it = lastNotifs[idx];
+      if (!it) return;
+      $('#notifPanel').classList.add('hidden');
+      if (it.month) {
+        const [mm, yy] = it.month.split('.');
+        $('#finMonth').value = `20${yy}-${mm}`;
+      }
+      go(it.page);
+    }
+
+    function toggleNotif(e) {
+      e?.stopPropagation?.();
+      $('#notifPanel').classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', (e) => {
+      const panel = $('#notifPanel');
+      if (panel && !panel.classList.contains('hidden') && !e.target.closest('.notif-wrap')) panel.classList.add('hidden');
+    });
+
+    function pushBrowserNotifs(items) {
+      if (!state.settings.browserNotif || !items.length) return;
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const today = fmtDate();
+      const storeKey = `${localKey()}_notified`;
+      let shown = {};
+      try { shown = JSON.parse(localStorage.getItem(storeKey) || '{}'); } catch (_) {}
+      if (shown.day !== today) shown = { day: today, keys: [] };
+      let changed = false;
+      items.forEach((it) => {
+        if (shown.keys.includes(it.key)) return;
+        try { new Notification(it.title, { body: it.text, tag: it.key }); } catch (_) {}
+        shown.keys.push(it.key);
+        changed = true;
+      });
+      if (changed) { try { localStorage.setItem(storeKey, JSON.stringify(shown)); } catch (_) {} }
+    }
+
+    // Panel açıq qalanda gün dəyişəndə də yoxla
+    setInterval(() => { if (currentUser) renderNotifications(); }, 30 * 60 * 1000);
+
+    function renderAll() {
       if (!currentUser) return;
+      fillFilterSelects();
       $('#bdgRez').textContent = recs.filter((r) => r.status === 'Gözləyir' || r.status === 'Təsdiqləndi').length;
       $('#bdgRem').textContent = state.rems.filter((x) => !x.done).length;
       $('#todayLabel').textContent = `Bu gün: ${fmtDate()}`;
@@ -2318,6 +2767,7 @@
       rCust();
       rRem();
       rJur();
+      renderNotifications();
     }
 
     async function applySession(session) {
