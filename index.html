@@ -524,6 +524,7 @@
         </div>
         <button id="loginBtn" type="submit" class="btn btn-primary w-full">Daxil ol</button>
       </form>
+      <button id="localBtn" type="button" class="btn btn-ghost w-full hidden" style="margin-top:10px;" onclick="openLocalMode()">Yerli rejimdə aç</button>
       <div class="muted" style="margin-top:12px;text-align:center;">Hesabı yalnız salon rəhbəri yarada bilər.</div>
 
       <div id="authMsg" class="msg hidden"></div>
@@ -3464,6 +3465,13 @@
       if (startPage && TITLES[startPage]) go(startPage);
     }
 
+    // Gizli keçid: beautypanel.online/?local=1 — hesabsız, məlumat yalnız bu cihazda saxlanır
+    async function openLocalMode() {
+      isLocalPreview = true;
+      $('#authMsg')?.classList.add('hidden');
+      await applySession({ user: { id: 'local', email: 'Yerli rejim' } });
+    }
+
     window.addEventListener('unhandledrejection', (event) => {
       const msg = String(event?.reason?.message || event?.reason || '');
       if (msg.includes('WebSocket not available') || msg.includes('is not allowed in Canvas')) {
@@ -3476,6 +3484,7 @@
       $('#todayLabel').textContent = `Bu gün: ${fmtDate()}`;
       applyThemeClass('light');
       updateOnline();
+      if (new URLSearchParams(location.search).get('local') === '1') $('#localBtn')?.classList.remove('hidden');
       if (!sb) return;
       try {
         const { data, error } = await sb.auth.getSession();
