@@ -367,6 +367,12 @@
     .alert-card { border-color: var(--warn); }
     .check-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 500; color: var(--text); cursor: pointer; }
     .check-row input { width: auto; }
+    .cust-row { cursor: pointer; }
+    .cust-row:hover td { background: var(--surface-2); }
+    .cust-hist-row > td { background: var(--surface-2); }
+    .cust-hist, .table-wrap td > .cust-hist, .table-wrap .cust-hist div { width: 100%; text-align: left; }
+    .table-wrap .cust-hist .row-actions { justify-content: flex-start; }
+    .cust-hist-item { padding: 8px 0; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 3px; }
 
     @media (max-width: 1100px) {
       .grid-5 { grid-template-columns: repeat(3, 1fr); }
@@ -2724,16 +2730,41 @@
         .filter((c) => !q || `${c.name} ${c.phone}`.toLocaleLowerCase('az').includes(q))
         .sort(sorters[sort] || sorters.sum);
       $('#fCustCount').textContent = `${rows.length} müştəri`;
+      custNames = rows.map((c) => c.name);
       $('#custRows').innerHTML = rows.length
-        ? rows.map((c) => `
-          <tr>
-            <td><strong>${esc(c.name)}</strong></td>
+        ? rows.map((c, idx) => `
+          <tr class="cust-row" onclick="toggleCust(${idx})" title="Tarixçəni göstər">
+            <td><strong>${openCust === c.name ? '▾' : '▸'} ${esc(c.name)}</strong></td>
             <td>${esc(c.phone)}</td>
             <td class="num">${c.cnt}</td>
             <td>${esc(c.lastLbl)}</td>
             <td class="num">${n2(c.sum)} ${esc(cur)}</td>
-          </tr>`).join('')
+          </tr>${openCust === c.name ? `<tr class="cust-hist-row"><td colspan="5">${custHistoryHtml(c.name)}</td></tr>` : ''}`).join('')
         : '<tr><td colspan="5" class="muted">Müştəri yoxdur</td></tr>';
+    }
+
+    // Müştəri sətrinə klik: rezervasiya tarixçəsi və qeydlər
+    let openCust = null;
+    let custNames = [];
+    function toggleCust(idx) {
+      const name = custNames[idx];
+      openCust = openCust === name ? null : name;
+      rCust();
+      labelTables();
+    }
+
+    function custHistoryHtml(name) {
+      const cur = getCurrency();
+      const list = recs.filter((r) => (r.cust || '').trim() === name).sort((a, b) => recSortKey(b) - recSortKey(a));
+      return `<div class="cust-hist">
+        <div class="muted" style="margin-bottom:6px;">Rezervasiya tarixçəsi (${list.length})</div>
+        ${list.map((r) => `
+          <div class="cust-hist-item">
+            <div><strong>${esc(r.date)} ${esc(r.time || '')}</strong> · ${esc(r.srv)}${r.assignee ? ` · <span class="muted">${esc(r.assignee)}</span>` : ''}</div>
+            <div class="row-actions">${n2(r.price)} ${esc(cur)} · ${esc(r.payMethod)} ${statusPill(r.status)}</div>
+            ${r.note ? `<div class="muted">Qeyd: ${esc(r.note)}</div>` : ''}
+          </div>`).join('')}
+      </div>`;
     }
 
     function rRem() {
