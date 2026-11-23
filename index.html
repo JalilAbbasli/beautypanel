@@ -1152,7 +1152,7 @@
                 <option value="salary">Aylıq sabit maaş</option>
               </select>
             </div>
-            <div class="field"><label>Dəyər (% və ya məbləğ)</label><input id="vFee" type="number" step="0.01" min="0" value="40" /></div>
+            <div class="field"><label>Dəyər (% və ya məbləğ)</label><input id="vFee" type="text" inputmode="decimal" autocomplete="off" value="40" /></div>
             <div style="grid-column:1/-1;"><button type="submit" class="btn btn-primary btn-sm">+ Əlavə et</button></div>
           </form>
         </div>
@@ -2176,11 +2176,18 @@
         alertInline('#fV', 'Bu adda əməkdaş artıq var.');
         return;
       }
+      // "35", "35,5", "35%" — hamısı qəbul olunur
+      const fee = Number(String($('#vFee').value || '').replace(',', '.').replace(/[^\d.]/g, ''));
+      if (!String($('#vFee').value || '').trim() || !Number.isFinite(fee)) {
+        alertInline('#fV', 'Faiz və ya maaş məbləğini rəqəmlə yazın (məs: 35).');
+        $('#vFee').focus();
+        return;
+      }
       state.staff.push({
         id: uid(), name,
         role: ($('#vRole').value || '').trim(),
         payType: $('#vType').value === 'salary' ? 'salary' : 'percent',
-        fee: Math.max(0, Number($('#vFee').value) || 0)
+        fee: Math.max(0, fee)
       });
       logAction(`Əməkdaş əlavə edildi: ${name}`);
       $('#fV').reset();
