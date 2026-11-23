@@ -359,6 +359,9 @@
     .notif-item:hover { background: var(--surface-2); }
     .notif-main { flex: 1; min-width: 0; text-align: left; background: transparent; border: 0; font-family: inherit; color: var(--text); cursor: pointer; padding: 6px; border-radius: 8px; display: flex; gap: 10px; align-items: flex-start; }
     .notif-item + .notif-item { border-top: 1px solid var(--border); }
+    .notif-rez { flex-wrap: wrap; }
+    .notif-rez .notif-main { flex: 1 1 200px; }
+    .notif-rez .row-actions { margin-left: auto; }
     .notif-item strong { font-size: 12.5px; display: block; }
     .notif-item span { font-size: 12px; color: var(--muted); }
     .notif-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
@@ -789,7 +792,7 @@
             <div id="kpiTodaySub" class="muted" style="margin-top:4px;">Bu gün aktiv görüşlər</div>
           </div>
           <div class="card">
-            <div class="muted">Gözləyən / Təsdiqli</div>
+            <div class="muted">Rezerv edildi</div>
             <div id="kpiOpen" class="kpi-val">0</div>
             <div id="kpiOpenSub" class="muted" style="margin-top:4px;">İcra gözləyən işlər</div>
           </div>
@@ -1002,7 +1005,7 @@
           <div class="filter-bar">
             <div class="f"><label>Ay</label><input id="repMonth" type="text" readonly autocomplete="off" class="picker-input" data-picker="month" onchange="renderAll()" /></div>
             <div class="f"><label>Status</label><select id="fRepStatus" onchange="renderAll()">
-              <option value="">Hamısı</option><option value="Gözləyir">Gözləyir</option><option value="Təsdiqləndi">Təsdiqləndi</option><option value="Tamamlandı">Tamamlandı</option><option value="Ləğv edildi">Ləğv edildi</option>
+              <option value="">Hamısı</option><option value="Rezerv edildi">Rezerv edildi</option><option value="Tamamlandı">Tamamlandı</option><option value="Ləğv edildi">Ləğv edildi</option>
             </select></div>
             <div class="f"><label>Əməkdaş / İcarədar</label><select id="fRepWho" onchange="renderAll()"></select></div>
             <div class="f"><label>Ödəniş üsulu</label><select id="fRepPay" onchange="renderAll()"></select></div>
@@ -1031,7 +1034,7 @@
           </div>
           <div class="filter-bar">
             <div class="f"><label>Status</label><select id="fStatus" onchange="renderAll()">
-              <option value="">Hamısı</option><option value="Gözləyir">Gözləyir</option><option value="Təsdiqləndi">Təsdiqləndi</option><option value="Tamamlandı">Tamamlandı</option><option value="Ləğv edildi">Ləğv edildi</option>
+              <option value="">Hamısı</option><option value="Rezerv edildi">Rezerv edildi</option><option value="Tamamlandı">Tamamlandı</option><option value="Ləğv edildi">Ləğv edildi</option>
             </select></div>
             <div class="f"><label>Tarixdən</label><input id="fRezFrom" type="text" readonly autocomplete="off" class="picker-input" data-picker="date" placeholder="Seçin" onchange="renderAll()" /></div>
             <div class="f"><label>Tarixədək</label><input id="fRezTo" type="text" readonly autocomplete="off" class="picker-input" data-picker="date" placeholder="Seçin" onchange="renderAll()" /></div>
@@ -1077,8 +1080,7 @@
               <div class="field">
                 <label>Status</label>
                 <select id="rStatus">
-                  <option value="Gözləyir">Gözləyir</option>
-                  <option value="Təsdiqləndi">Təsdiqləndi</option>
+                  <option value="Rezerv edildi">Rezerv edildi</option>
                   <option value="Tamamlandı">Tamamlandı</option>
                   <option value="Ləğv edildi">Ləğv edildi</option>
                 </select>
@@ -1348,7 +1350,9 @@
     const SB_KEY = 'sb_publishable_6tdzSskT4VmGLQBu8QU95A_3T8V1Dn_';
     const USER_DOMAIN = 'salon.local';
 
-    const STATUSES = ['Gözləyir', 'Təsdiqləndi', 'Tamamlandı', 'Ləğv edildi'];
+    const STATUSES = ['Rezerv edildi', 'Tamamlandı', 'Ləğv edildi'];
+    const OPEN_ST = 'Rezerv edildi';
+    const isOpen = (r) => r.status === OPEN_ST;
     const PAY_METHODS = ['Nağd', 'Kart', 'Köçürmə'];
     const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
 
@@ -1632,7 +1636,8 @@
         ...r,
         date: normD(r.date) || r.date || fmtDate(),
         price: Math.max(0, Number(r.price) || 0),
-        status: STATUSES.includes(r.status) ? r.status : 'Gözləyir',
+        // köhnə statuslar (Gözləyir / Təsdiqləndi) -> Rezerv edildi
+        status: STATUSES.includes(r.status) ? r.status : OPEN_ST,
         payMethod: PAY_METHODS.includes(r.payMethod) ? r.payMethod : 'Nağd'
       };
     }
@@ -2025,7 +2030,7 @@
         time: $('#rTime').value || '12:00',
         price: $('#rPrice').value,
         payMethod: $('#rPay').value,
-        status: $('#rStatus').value || 'Gözləyir',
+        status: $('#rStatus').value || OPEN_ST,
         note: ($('#rNote').value || '').trim()
       });
       recs.unshift(rec);
@@ -2416,9 +2421,8 @@
 
     function statusPill(st) {
       if (st === 'Tamamlandı') return `<span class="pill ok">${esc(st)}</span>`;
-      if (st === 'Təsdiqləndi') return `<span class="pill ok" style="opacity:.8">${esc(st)}</span>`;
       if (st === 'Ləğv edildi') return `<span class="pill err">${esc(st)}</span>`;
-      return `<span class="pill warn">${esc(st || 'Gözləyir')}</span>`;
+      return `<span class="pill warn">${esc(st || OPEN_ST)}</span>`;
     }
 
     function filteredRecs() {
@@ -2449,7 +2453,7 @@
         ? `${todayRecs.filter((x) => x.status === 'Tamamlandı').length} tamamlanıb`
         : 'Bu gün görüş yoxdur';
 
-      const open = recs.filter((r) => r.status === 'Gözləyir' || r.status === 'Təsdiqləndi');
+      const open = recs.filter(isOpen);
       $('#kpiOpen').textContent = open.length;
       $('#kpiOpenSub').textContent = `Gözlənilən məbləğ: ${money(sum(open, (r) => r.price))}`;
 
@@ -2502,7 +2506,7 @@
       // yaxınlaşan
       const startToday = parseD(today).getTime();
       const upcoming = filteredRecs()
-        .filter((r) => (r.status === 'Gözləyir' || r.status === 'Təsdiqləndi') && recSortKey(r) >= startToday)
+        .filter((r) => isOpen(r) && recSortKey(r) >= startToday)
         .sort((a, b) => recSortKey(a) - recSortKey(b))
         .slice(0, 8);
       $('#dashRows').innerHTML = upcoming.length
@@ -2635,7 +2639,7 @@
           return true;
         })
         .sort((a, b) => recSortKey(b) - recSortKey(a));
-      $('#fRezCount').textContent = `${list.length} qeyd · ${money(sum(list.filter((r) => r.status === 'Tamamlandı'), (r) => r.price))} tamamlanmış`;
+      $('#fRezCount').textContent = `${list.length} qeyd · ${list.filter(isOpen).length} rezerv edildi · ${money(sum(list.filter((r) => r.status === 'Tamamlandı'), (r) => r.price))} tamamlanmış`;
       $('#rezRows').innerHTML = list.length
         ? list.map((r) => `
           <tr>
@@ -3169,6 +3173,18 @@
           page: 'wa', month: i.m, sort: i.days, tenantId: t.id, hasPhone: !!t.phone
         });
       });
+      // vaxtı çatmış, statusu hələ "Rezerv edildi" olan rezervasiyalar
+      const nowMs = Date.now();
+      recs.filter((r) => isOpen(r) && recSortKey(r) <= nowMs).forEach((r) => {
+        const late = Math.round((nowMs - recSortKey(r)) / 60000);
+        items.push({
+          key: `rez_${r.id}`,
+          level: late >= 60 ? 'err' : 'warn',
+          title: `Rezervasiya vaxtı çatıb: ${r.cust}`,
+          text: `${r.srv} · ${r.date} ${r.time || ''}${r.assignee ? ` · ${r.assignee}` : ''} — statusu seçin`,
+          page: 'rez', sort: -100000 + late / 1e6, recId: r.id
+        });
+      });
       const today = startOfToday();
       state.rems.forEach((r) => {
         if (r.done) return;
@@ -3182,7 +3198,7 @@
 
     function notifItemsHtml(items) {
       return items.map((it, idx) => `
-        <div class="notif-item">
+        <div class="notif-item${it.recId ? ' notif-rez' : ''}">
           <button type="button" class="notif-main" onclick="openNotif(${idx})">
             <span class="notif-dot ${it.level}"></span>
             <div><strong>${esc(it.title)}</strong><span>${esc(it.text)}</span></div>
@@ -3190,6 +3206,10 @@
           ${it.tenantId ? (it.hasPhone
             ? `<button type="button" class="btn btn-wa btn-sm" onclick="event.stopPropagation(); remindTenant('${esc(it.tenantId)}')" title="WhatsApp-da xatırlat">${WA_ICON} Xatırlat</button>`
             : '<span class="pill err" title="İcarədarın WhatsApp nömrəsi yoxdur">Nömrə yoxdur</span>') : ''}
+          ${it.recId ? `<div class="row-actions" style="flex-wrap:nowrap;">
+            <button type="button" class="btn btn-ok btn-sm" onclick="event.stopPropagation(); setRezField('${esc(it.recId)}', 'status', 'Tamamlandı')">Tamamlandı</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="event.stopPropagation(); setRezField('${esc(it.recId)}', 'status', 'Ləğv edildi')" title="Müştəri gəlmədi və ya imtina etdi">Ləğv edildi</button>
+          </div>` : ''}
         </div>`).join('');
     }
 
@@ -3251,7 +3271,8 @@
     }
 
     // Panel açıq qalanda gün dəyişəndə də yoxla
-    setInterval(() => { if (currentUser) renderNotifications(); }, 30 * 60 * 1000);
+    // rezervasiya vaxtı çatanda xəbər vermək üçün hər dəqiqə yoxla
+    setInterval(() => { if (currentUser) renderNotifications(); }, 60 * 1000);
 
     /* ---------- Azərbaycan dilində təqvim ---------- */
     // data-picker="month": ay seçimi (gizli dəyər YYYY-MM, ekranda "Noyabr 2026")
@@ -3469,7 +3490,9 @@
     function renderAll() {
       if (!currentUser) return;
       fillFilterSelects();
-      $('#bdgRez').textContent = recs.filter((r) => r.status === 'Gözləyir' || r.status === 'Təsdiqləndi').length;
+      const openCnt = recs.filter(isOpen).length;
+      $('#bdgRez').textContent = `${openCnt} / ${recs.length}`;
+      $('#bdgRez').title = `${openCnt} rezerv edildi (aktiv), cəmi ${recs.length} qeyd`;
       $('#bdgRem').textContent = state.rems.filter((x) => !x.done).length;
       rWa();
       $('#todayLabel').textContent = `Bu gün: ${fmtDate()}`;
