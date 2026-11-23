@@ -322,6 +322,21 @@
       border-radius: 10px; padding: 10px 12px; margin-top: 10px;
     }
 
+    .card-click { cursor: pointer; transition: border-color .15s ease, transform .15s ease; }
+    .card-click:hover { border-color: var(--accent); }
+    .card-click:active { transform: scale(.99); }
+    .card-click::after { content: '›'; position: absolute; top: 12px; right: 14px; color: var(--muted); font-size: 18px; line-height: 1; }
+    .detail-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 10, 25, .45); z-index: 1100;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .detail-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow); width: 100%; max-width: 760px; max-height: 85vh; overflow: auto; padding: 18px;
+    }
+    .detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+    .detail-sum { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+    .detail-sec { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin: 14px 0 6px; }
     .undo-bar {
       position: fixed; right: 20px; bottom: 20px;
       background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
@@ -483,6 +498,9 @@
       .undo-bar { left: 12px; right: 12px; bottom: calc(80px + env(safe-area-inset-bottom)); }
       .notif-panel { position: fixed; left: 10px; right: 10px; width: auto; top: calc(64px + env(safe-area-inset-top)); max-height: 70vh; }
       .chart-bars { gap: 6px; }
+      .detail-backdrop { align-items: flex-end; padding: 0; }
+      .detail-box .table-wrap tfoot { display: block; }
+      .detail-box { max-width: none; max-height: 88vh; border-radius: 16px 16px 0 0; padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); }
       .dp { position: fixed; left: 10px; right: 10px; top: auto !important; bottom: calc(10px + env(safe-area-inset-bottom)); width: auto; padding: 16px; }
       .dp-cell { height: 44px; font-size: 15px; }
       .dp-grid.months .dp-cell { height: 52px; }
@@ -786,22 +804,22 @@
           </div>
         </div>
         <div class="grid-4">
-          <div class="card">
+          <div class="card card-click" role="button" tabindex="0" onclick="openCardDetail('dashToday')" title="Ətraflı bax">
             <div class="muted">Bugünkü rezervasiya</div>
             <div id="kpiToday" class="kpi-val">0</div>
             <div id="kpiTodaySub" class="muted" style="margin-top:4px;">Bu gün aktiv görüşlər</div>
           </div>
-          <div class="card">
+          <div class="card card-click" role="button" tabindex="0" onclick="openCardDetail('dashOpen')" title="Ətraflı bax">
             <div class="muted">Rezerv edildi</div>
             <div id="kpiOpen" class="kpi-val">0</div>
             <div id="kpiOpenSub" class="muted" style="margin-top:4px;">İcra gözləyən işlər</div>
           </div>
-          <div class="card">
+          <div class="card card-click" role="button" tabindex="0" onclick="openCardDetail('dashRev')" title="Ətraflı bax">
             <div class="muted">Bu ay gəlir (tamamlanmış)</div>
             <div id="kpiRev" class="kpi-val">0.00</div>
             <div id="kpiAvgSub" class="muted" style="margin-top:4px;">Orta çek: 0.00</div>
           </div>
-          <div class="card highlight">
+          <div class="card card-click highlight" role="button" tabindex="0" onclick="openCardDetail('dashNet')" title="Ətraflı bax">
             <div class="muted">Bu ay xalis mənfəət</div>
             <div id="kpiNet" class="kpi-val">0.00</div>
             <div id="kpiNetSub" class="muted" style="margin-top:4px;">Xərclər və usta payı çıxılıb</div>
@@ -871,11 +889,11 @@
         </div>
 
         <div class="grid-5">
-          <div class="card"><div class="muted">Xidmət gəliri</div><div id="finSvc" class="kpi-val">0.00</div><div id="finSvcSub" class="muted"></div></div>
-          <div class="card"><div class="muted">İcarə gəliri</div><div id="finRent" class="kpi-val">0.00</div><div id="finRentSub" class="muted"></div></div>
-          <div class="card"><div class="muted">Xərclər</div><div id="finExp" class="kpi-val">0.00</div><div id="finExpSub" class="muted"></div></div>
-          <div class="card"><div class="muted">Usta payı</div><div id="finStaff" class="kpi-val">0.00</div><div id="finStaffSub" class="muted"></div></div>
-          <div class="card highlight"><div class="muted">Xalis mənfəət</div><div id="finNet" class="kpi-val">0.00</div><div class="muted">Gəlir − xərc − usta payı</div></div>
+          <div class="card card-click" role="button" tabindex="0" onclick="openCardDetail('finSvc')" title="Ətraflı bax"><div class="muted">Xidmət gəliri</div><div id="finSvc" class="kpi-val">0.00</div><div id="finSvcSub" class="muted"></div></div>
+          <div class="card card-click" role="button" tabindex="0" onclick="openCardDetail('finRent')" title="Ətraflı bax"><div class="muted">İcarə gəliri</div><div id="finRent" class="kpi-val">0.00</div><div id="finRentSub" class="muted"></div></div>
+          <div class="card card-click" role="button" tabindex="0" onclick="openCardDetail('finExp')" title="Ətraflı bax"><div class="muted">Xərclər</div><div id="finExp" class="kpi-val">0.00</div><div id="finExpSub" class="muted"></div></div>
+          <div class="card card-click" role="button" tabindex="0" onclick="openCardDetail('finStaff')" title="Ətraflı bax"><div class="muted">Usta payı</div><div id="finStaff" class="kpi-val">0.00</div><div id="finStaffSub" class="muted"></div></div>
+          <div class="card card-click highlight" role="button" tabindex="0" onclick="openCardDetail('finNet')" title="Ətraflı bax"><div class="muted">Xalis mənfəət</div><div id="finNet" class="kpi-val">0.00</div><div class="muted">Gəlir − xərc − usta payı</div></div>
         </div>
 
         <div class="grid-2">
@@ -1012,9 +1030,9 @@
             <div class="f-actions"><span id="fRepCount" class="filter-count"></span><button type="button" class="btn btn-ghost btn-sm" onclick="resetFilters('rep')">Sıfırla</button></div>
           </div>
           <div class="grid-3" style="margin-bottom:14px;">
-            <div class="card"><div class="muted">Rezervasiya (ləğvsiz)</div><div id="repCnt" class="kpi-val">0</div></div>
-            <div class="card"><div class="muted">Tamamlanmış məbləğ</div><div id="repDone" class="kpi-val">0.00</div></div>
-            <div class="card"><div class="muted">Ləğv edilən</div><div id="repCancel" class="kpi-val">0</div></div>
+            <div class="card card-click" role="button" tabindex="0" onclick="openCardDetail('repCnt')" title="Ətraflı bax"><div class="muted">Rezervasiya (ləğvsiz)</div><div id="repCnt" class="kpi-val">0</div></div>
+            <div class="card card-click" role="button" tabindex="0" onclick="openCardDetail('repDone')" title="Ətraflı bax"><div class="muted">Tamamlanmış məbləğ</div><div id="repDone" class="kpi-val">0.00</div></div>
+            <div class="card card-click" role="button" tabindex="0" onclick="openCardDetail('repCancel')" title="Ətraflı bax"><div class="muted">Ləğv edilən</div><div id="repCancel" class="kpi-val">0</div></div>
           </div>
           <div class="table-wrap">
             <table>
@@ -1338,6 +1356,16 @@
         <span>Menyu</span>
       </button>
     </nav>
+  </div>
+
+  <div id="detailModal" class="detail-backdrop hidden" onclick="if (event.target === this) closeDetail()">
+    <div class="detail-box" role="dialog" aria-modal="true">
+      <div class="detail-head">
+        <div><div id="detailTitle" class="card-title"></div><div id="detailSub" class="muted"></div></div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeDetail()" aria-label="Bağla">✕</button>
+      </div>
+      <div id="detailBody"></div>
+    </div>
   </div>
 
   <div id="undoBar" class="undo-bar hidden">
@@ -2667,6 +2695,7 @@
         .filter((r) => monthOfDate(r.date) === m)
         .filter((r) => (!st || r.status === st) && (!pay || r.payMethod === pay) && (who === '__none' ? !r.assignee : (!who || r.assignee === who)))
         .sort((a, b) => recSortKey(a) - recSortKey(b));
+      lastRepList = list;
       $('#fRepCount').textContent = `${list.length} qeyd`;
       $('#repCnt').textContent = list.filter((r) => r.status !== 'Ləğv edildi').length;
       $('#repDone').textContent = n2(sum(list.filter((r) => r.status === 'Tamamlandı'), (r) => r.price));
@@ -3110,6 +3139,119 @@
         }).join('')
         : `<tr><td colspan="9" class="muted">${state.tenants.length ? 'Filtrə uyğun icarədar yoxdur' : 'İcarədar yoxdur'}</td></tr>`;
     }
+
+    /* ---------- Kartlara toxunanda ətraflı açılış ---------- */
+
+    let lastRepList = [];
+
+    function detailTable(headers, rows, foot) {
+      if (!rows.length) return '<div class="muted" style="padding:8px 0;">Qeyd yoxdur</div>';
+      const th = headers.map((h) => `<th class="${h.num ? 'num' : ''}">${esc(h.t)}</th>`).join('');
+      const tr = rows.map((r) => `<tr>${r.map((c, i) => `<td class="${headers[i].num ? 'num' : ''}">${c}</td>`).join('')}</tr>`).join('');
+      const tf = foot ? `<tfoot><tr>${foot.map((c, i) => `<td class="${headers[i].num ? 'num' : ''}">${c}</td>`).join('')}</tr></tfoot>` : '';
+      return `<div class="table-wrap"><table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody>${tf}</table></div>`;
+    }
+
+    const recRowsTable = (list, withStatus = true) => detailTable(
+      [{ t: 'Tarix' }, { t: 'Müştəri' }, { t: 'Xidmət' }, { t: 'Əməkdaş / İcarədar' }, { t: 'Üsul' }, { t: 'Məbləğ', num: true }, ...(withStatus ? [{ t: 'Status' }] : [])],
+      list.map((r) => [esc(`${r.date} ${r.time || ''}`), `<strong>${esc(r.cust)}</strong>`, esc(r.srv), `<span class="muted">${esc(r.assignee || '-')}</span>`, esc(r.payMethod), n2(r.price), ...(withStatus ? [statusPill(r.status)] : [])]),
+      list.length > 1 ? ['Cəmi', '', '', '', '', `<strong>${n2(sum(list, (r) => r.price))}</strong>`, ...(withStatus ? [''] : [])] : null
+    );
+
+    const pills = (arr) => `<div class="detail-sum">${arr.map(([k, v]) => `<span class="badge">${esc(k)}: ${esc(v)}</span>`).join('')}</div>`;
+    const sec = (t) => `<div class="detail-sec">${esc(t)}</div>`;
+
+    function byKey(list, keyFn, valFn) {
+      const m = {};
+      list.forEach((x) => { const k = keyFn(x) || '-'; m[k] = (m[k] || 0) + (Number(valFn(x)) || 0); });
+      return Object.entries(m).sort((a, b) => b[1] - a[1]);
+    }
+
+    function svcDetail(f) {
+      const list = [...f.svc].sort((a, b) => recSortKey(b) - recSortKey(a));
+      return pills(byKey(list, (r) => r.payMethod, (r) => r.price).map(([k, v]) => [k, money(v)]))
+        + sec('Əməkdaş / icarədar üzrə')
+        + detailTable([{ t: 'Kim' }, { t: 'Məbləğ', num: true }], byKey(list, (r) => r.assignee || 'Təyin edilməyib', (r) => r.price).map(([k, v]) => [esc(k), n2(v)]))
+        + sec('Tamamlanmış xidmətlər') + recRowsTable(list, false);
+    }
+
+    function netDetail(f) {
+      return detailTable([{ t: 'Maddə' }, { t: 'Məbləğ', num: true }], [
+        ['Xidmət gəliri (tamamlanmış)', `+${n2(f.svcRev)}`],
+        ['İcarə gəliri (alınan)', `+${n2(f.rentIn)}`],
+        ['Xərclər', `−${n2(f.expSum)}`],
+        ['Usta payı (hesablanan)', `−${n2(f.staffDue)}`]
+      ], ['<strong>Xalis mənfəət</strong>', `<strong>${n2(f.net)}</strong>`]);
+    }
+
+    function openCardDetail(kind) {
+      const finM = monthFromInput('#finMonth');
+      const m = kind.startsWith('fin') ? finM : kind.startsWith('rep') ? monthFromInput('#repMonth') : curMonth();
+      const f = calcFin(m);
+      const mLbl = monthLabel(m);
+      let title = '', body = '';
+      if (kind === 'dashToday') {
+        title = `Bugünkü rezervasiyalar (${fmtDate()})`;
+        body = recRowsTable(recs.filter((r) => r.date === fmtDate() && r.status !== 'Ləğv edildi').sort((a, b) => recSortKey(a) - recSortKey(b)));
+      } else if (kind === 'dashOpen') {
+        title = 'Rezerv edildi — icra gözləyənlər';
+        body = recRowsTable(recs.filter(isOpen).sort((a, b) => recSortKey(a) - recSortKey(b)));
+      } else if (kind === 'dashRev' || kind === 'finSvc') {
+        title = `Xidmət gəliri — ${mLbl}`;
+        body = svcDetail(f);
+      } else if (kind === 'dashNet' || kind === 'finNet') {
+        title = `Xalis mənfəət — ${mLbl}`;
+        body = netDetail(f);
+      } else if (kind === 'finRent') {
+        title = `İcarə gəliri — ${mLbl}`;
+        body = sec('İcarədarlar üzrə') + detailTable(
+          [{ t: 'İcarədar' }, { t: 'Aylıq', num: true }, { t: 'Ödənilib', num: true }, { t: 'Borc', num: true }],
+          f.tenantRows.map((x) => [`<strong>${esc(x.t.name)}</strong>`, n2(x.t.fee), n2(x.paid), x.left > 0 ? `<span class="pill warn">${n2(x.left)}</span>` : '0.00']),
+          ['Cəmi', n2(sum(f.tenantRows, (x) => x.t.fee)), n2(f.rentIn), n2(sum(f.tenantRows, (x) => x.left))]
+        ) + sec('Ödəniş qeydləri') + detailTable(
+          [{ t: 'Tarix' }, { t: 'İcarədar' }, { t: 'Üsul' }, { t: 'Məbləğ', num: true }],
+          [...f.rentPays].sort((a, b) => (parseD(b.date)?.getTime() || 0) - (parseD(a.date)?.getTime() || 0)).map((p) => [esc(p.date), esc(p.name), esc(p.method), n2(p.amount)])
+        );
+      } else if (kind === 'finExp') {
+        title = `Xərclər — ${mLbl}`;
+        body = sec('Kateqoriya üzrə') + detailTable([{ t: 'Kateqoriya' }, { t: 'Məbləğ', num: true }], byKey(f.exps, (x) => x.cat, (x) => x.amount).map(([k, v]) => [esc(k), n2(v)]), ['Cəmi', `<strong>${n2(f.expSum)}</strong>`])
+          + sec('Bütün xərclər') + detailTable(
+            [{ t: 'Tarix' }, { t: 'Kateqoriya' }, { t: 'Təsvir' }, { t: 'Üsul' }, { t: 'Məbləğ', num: true }],
+            [...f.exps].sort((a, b) => (parseD(b.date)?.getTime() || 0) - (parseD(a.date)?.getTime() || 0)).map((x) => [esc(x.date), esc(x.cat), esc(x.desc || '-'), esc(x.method), n2(x.amount)])
+          );
+      } else if (kind === 'finStaff') {
+        title = `Usta payı — ${mLbl}`;
+        body = detailTable(
+          [{ t: 'Usta' }, { t: 'Şərt' }, { t: 'Dövriyyə', num: true }, { t: 'Hesablanan', num: true }, { t: 'Ödənilib', num: true }, { t: 'Qalıq', num: true }],
+          f.staffRows.map((x) => [`<strong>${esc(x.s.name)}</strong>`, x.s.payType === 'salary' ? `Maaş ${n2(x.s.fee)}` : `${n2(x.s.fee)}%`, n2(x.turnover), n2(x.due), n2(x.paid), n2(x.left)]),
+          ['Cəmi', '', n2(sum(f.staffRows, (x) => x.turnover)), n2(f.staffDue), n2(sum(f.staffRows, (x) => x.paid)), n2(sum(f.staffRows, (x) => x.left))]
+        ) + sec('Ödəniş qeydləri') + detailTable(
+          [{ t: 'Tarix' }, { t: 'Usta' }, { t: 'Üsul' }, { t: 'Məbləğ', num: true }],
+          f.staffPays.map((p) => [esc(p.date), esc(p.name), esc(p.method), n2(p.amount)])
+        );
+      } else if (kind === 'repCnt') {
+        title = `Rezervasiyalar (ləğvsiz) — ${mLbl}`;
+        body = recRowsTable(lastRepList.filter((r) => r.status !== 'Ləğv edildi'));
+      } else if (kind === 'repDone') {
+        title = `Tamamlanmış — ${mLbl}`;
+        body = recRowsTable(lastRepList.filter((r) => r.status === 'Tamamlandı'), false);
+      } else if (kind === 'repCancel') {
+        title = `Ləğv edilən — ${mLbl}`;
+        body = recRowsTable(lastRepList.filter((r) => r.status === 'Ləğv edildi'), false);
+      }
+      $('#detailTitle').textContent = title;
+      $('#detailSub').textContent = `Məbləğlər: ${getCurrency()}`;
+      $('#detailBody').innerHTML = body;
+      $('#detailModal').classList.remove('hidden');
+      labelTables();
+    }
+
+    function closeDetail() { $('#detailModal').classList.add('hidden'); }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDetail();
+      const c = e.target.closest?.('.card-click');
+      if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); c.click(); }
+    });
 
     function rJur() {
       const q = val('#fJurQ').toLocaleLowerCase('az');
