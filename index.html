@@ -322,6 +322,9 @@
       border-radius: 10px; padding: 10px 12px; margin-top: 10px;
     }
 
+    .period-inputs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .period-inputs .picker-input { flex: 1 1 120px; min-width: 0; }
+    .filter-bar .period-f { max-width: 300px; flex: 1 1 220px; }
     .card-click { cursor: pointer; transition: border-color .15s ease, transform .15s ease; }
     .card-click:hover { border-color: var(--accent); }
     .card-click:active { transform: scale(.99); }
@@ -579,7 +582,7 @@
                 <rect x="14" y="12" width="7" height="9" rx="1.5"></rect>
                 <rect x="3" y="16" width="7" height="5" rx="1.5"></rect>
               </svg>
-              <span>Dashboard</span>
+              <span>Əsas səhifə</span>
             </span>
           </button>
         </div>
@@ -624,7 +627,7 @@
                 <line x1="12" y1="20" x2="12" y2="4"></line>
                 <line x1="6" y1="20" x2="6" y2="14"></line>
               </svg>
-              <span>Aylıq hesabat</span>
+              <span>Hesabat</span>
             </span>
           </button>
         </div>
@@ -724,7 +727,7 @@
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
-              <span>Reminder</span>
+              <span>Xatırlatmalar</span>
             </span>
             <span id="bdgRem" class="badge">0</span>
           </button>
@@ -772,7 +775,7 @@
           <button type="button" class="btn btn-ghost btn-sm menu-btn" onclick="toggleNav()" aria-label="Menyu">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
           </button>
-          <h1 id="pageTitle" class="page-title">Dashboard</h1>
+          <h1 id="pageTitle" class="page-title">Əsas səhifə</h1>
         </div>
         <div class="top-actions">
           <input id="qSearch" type="search" placeholder="Müştəri / rezervasiya axtar..." oninput="renderAll()" style="width:230px;" />
@@ -879,11 +882,13 @@
           <div class="card-head" style="margin-bottom:0;">
             <div>
               <div class="card-title">Maliyyə icmalı</div>
-              <div class="muted">Ay üzrə gəlir, xərc, usta payı və xalis mənfəət</div>
+              <div class="muted">Seçilmiş dövr üzrə gəlir, xərc, usta payı və xalis mənfəət</div>
             </div>
-            <div class="row-actions">
+            <div class="row-actions period-inputs">
+              <select id="finMode" class="period-mode" onchange="renderAll()" style="width:auto;"><option value="month">Ay</option><option value="day">Gün</option><option value="week">Həftə</option><option value="custom">Tarix aralığı</option></select>
               <input id="finMonth" type="text" readonly autocomplete="off" class="picker-input" data-picker="month" onchange="renderAll()" style="width:170px;" />
-              <button type="button" class="btn btn-ghost btn-sm" onclick="exportFinCsv()">CSV yüklə</button>
+              <input id="finDay" type="text" readonly autocomplete="off" class="picker-input hidden" data-picker="date" placeholder="Tarix seçin" onchange="renderAll()" /><input id="finFrom" type="text" readonly autocomplete="off" class="picker-input hidden" data-picker="date" placeholder="Başlanğıc" onchange="renderAll()" /><input id="finTo" type="text" readonly autocomplete="off" class="picker-input hidden" data-picker="date" placeholder="Son" onchange="renderAll()" />
+              <button type="button" class="btn btn-ghost btn-sm" onclick="exportFinCsv()" title="Excel-də açılan CSV faylı">Excel üçün yüklə</button>
             </div>
           </div>
         </div>
@@ -917,7 +922,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title" style="margin-bottom:4px;">Ustalara ödəniş</div>
+          <div class="card-title" style="margin-bottom:4px;">Ustalara ödəniş <span class="badge finMonthTag"></span></div>
           <div class="muted" style="margin-bottom:10px;">Faizlə işləyən usta üçün yalnız “Tamamlandı” statuslu xidmətlər sayılır</div>
           <div class="table-wrap">
             <table>
@@ -928,7 +933,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title" style="margin-bottom:10px;">İcarə ödənişləri</div>
+          <div class="card-title" style="margin-bottom:10px;">İcarə ödənişləri <span class="badge finMonthTag"></span></div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>İcarədar</th><th class="num">Aylıq</th><th class="num">Ödənilib</th><th class="num">Borc</th><th>Status</th><th>Ödəniş qəbul et</th></tr></thead>
@@ -938,7 +943,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title" style="margin-bottom:10px;">Bu ayın ödəniş qeydləri</div>
+          <div id="finPayTitle" class="card-title" style="margin-bottom:10px;">Ödəniş qeydləri</div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Tarix</th><th>Növ</th><th>Ad</th><th>Üsul</th><th class="num">Məbləğ</th><th></th></tr></thead>
@@ -999,7 +1004,8 @@
             <span id="expTotal" class="badge">0.00</span>
           </div>
           <div class="filter-bar">
-            <div class="f"><label>Ay</label><input id="expMonth" type="text" readonly autocomplete="off" class="picker-input" data-picker="month" onchange="renderAll()" /></div>
+            <div class="f"><label>Dövr</label><select id="expMode" class="period-mode" onchange="renderAll()"><option value="month">Ay</option><option value="day">Gün</option><option value="week">Həftə</option><option value="custom">Tarix aralığı</option></select></div>
+            <div class="f period-f"><label id="expDateLbl">Ay</label><div class="period-inputs"><input id="expMonth" type="text" readonly autocomplete="off" class="picker-input" data-picker="month" onchange="renderAll()" /><input id="expDay" type="text" readonly autocomplete="off" class="picker-input hidden" data-picker="date" placeholder="Tarix seçin" onchange="renderAll()" /><input id="expFrom" type="text" readonly autocomplete="off" class="picker-input hidden" data-picker="date" placeholder="Başlanğıc" onchange="renderAll()" /><input id="expTo" type="text" readonly autocomplete="off" class="picker-input hidden" data-picker="date" placeholder="Son" onchange="renderAll()" /></div></div>
             <div class="f"><label>Kateqoriya</label><select id="fExpCat" onchange="renderAll()"></select></div>
             <div class="f"><label>Ödəniş üsulu</label><select id="fExpMethod" onchange="renderAll()"></select></div>
             <div class="f"><label>Axtar</label><input id="fExpQ" type="search" placeholder="Təsvir..." oninput="renderAll()" /></div>
@@ -1018,10 +1024,11 @@
       <section id="p_rep" class="page hidden">
         <div class="card">
           <div class="card-head">
-            <div class="card-title">Aylıq rezervasiya hesabatı</div>
+            <div class="card-title">Rezervasiya hesabatı</div>
           </div>
           <div class="filter-bar">
-            <div class="f"><label>Ay</label><input id="repMonth" type="text" readonly autocomplete="off" class="picker-input" data-picker="month" onchange="renderAll()" /></div>
+            <div class="f"><label>Dövr</label><select id="repMode" class="period-mode" onchange="renderAll()"><option value="month">Ay</option><option value="day">Gün</option><option value="week">Həftə</option><option value="custom">Tarix aralığı</option></select></div>
+            <div class="f period-f"><label id="repDateLbl">Ay</label><div class="period-inputs"><input id="repMonth" type="text" readonly autocomplete="off" class="picker-input" data-picker="month" onchange="renderAll()" /><input id="repDay" type="text" readonly autocomplete="off" class="picker-input hidden" data-picker="date" placeholder="Tarix seçin" onchange="renderAll()" /><input id="repFrom" type="text" readonly autocomplete="off" class="picker-input hidden" data-picker="date" placeholder="Başlanğıc" onchange="renderAll()" /><input id="repTo" type="text" readonly autocomplete="off" class="picker-input hidden" data-picker="date" placeholder="Son" onchange="renderAll()" /></div></div>
             <div class="f"><label>Status</label><select id="fRepStatus" onchange="renderAll()">
               <option value="">Hamısı</option><option value="Rezerv edildi">Rezerv edildi</option><option value="Tamamlandı">Tamamlandı</option><option value="Ləğv edildi">Ləğv edildi</option>
             </select></div>
@@ -1263,7 +1270,7 @@
       <!-- REMINDER -->
       <section id="p_rem" class="page hidden">
         <div class="card">
-          <div class="card-title" style="margin-bottom:12px;">Yeni reminder</div>
+          <div class="card-title" style="margin-bottom:12px;">Yeni xatırlatma</div>
           <form id="fRm" action="javascript:void(0)" onsubmit="addRem(event)" class="grid-3">
             <div class="field"><label>Qeyd / Xatırlatma *</label><input id="rmText" type="text" required placeholder="Xatırlatma mətni" /></div>
             <div class="field"><label>Tarix</label><input id="rmDate" type="text" readonly autocomplete="off" class="picker-input" data-picker="dmy" /></div>
@@ -1271,7 +1278,7 @@
           </form>
         </div>
         <div class="card">
-          <div class="card-title" style="margin-bottom:10px;">Reminder siyahısı</div>
+          <div class="card-title" style="margin-bottom:10px;">Xatırlatmalar siyahısı</div>
           <div class="filter-bar">
             <div class="f"><label>Axtar</label><input id="fRemQ" type="search" placeholder="Mətn..." oninput="renderAll()" /></div>
             <div class="f"><label>Status</label><select id="fRemStatus" onchange="renderAll()">
@@ -1316,7 +1323,7 @@
             <div class="field">
               <label>Brauzer bildirişləri</label>
               <label class="check-row"><input id="setBrowserNotif" type="checkbox" /> Bu cihaza bildiriş göndər (hər səhər 10:00 və panel açıq olanda)</label>
-              <div id="pushStatus" class="muted" style="margin-top:6px;">Bildirişlər paneldə zəng ikonunda və Dashboard-da həmişə görünür.</div>
+              <div id="pushStatus" class="muted" style="margin-top:6px;">Bildirişlər paneldə zəng ikonunda və əsas səhifədə həmişə görünür.</div>
               <div class="row-actions" style="margin-top:8px;">
                 <button type="button" id="pushTestBtn" class="btn btn-ghost btn-sm" onclick="testPush()">Test bildirişi göndər</button>
               </div>
@@ -1442,6 +1449,49 @@
       const v = $(sel)?.dataset.value || '';
       const m = /^(\d{4})-(\d{2})$/.exec(v);
       return m ? `${m[2]}.${m[1].slice(2)}` : curMonth();
+    }
+
+    // Dövr seçimi: Ay / Gün / Həftə / Tarix aralığı. Qaytarır: {mode, m (ödəniş ayı MM.YY), from, to (ms), label}
+    function periodRange(px) {
+      const mode = $(`#${px}Mode`)?.value || 'month';
+      const vis = { Month: mode === 'month', Day: mode === 'day' || mode === 'week', From: mode === 'custom', To: mode === 'custom' };
+      Object.entries(vis).forEach(([k, v]) => $(`#${px}${k}`)?.classList.toggle('hidden', !v));
+      const lbl = $(`#${px}DateLbl`);
+      if (lbl) lbl.textContent = { month: 'Ay', day: 'Gün', week: 'Həftədən bir gün seçin', custom: 'Başlanğıc – son tarix' }[mode];
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const endOf = (d) => d.getTime() + 86400000 - 1;
+      if (mode === 'day' || mode === 'week') {
+        let d = pickerGet($(`#${px}Day`));
+        if (!d) { d = today; pickerSet($(`#${px}Day`), d, true); }
+        if (mode === 'day') return { mode, m: fmtDate(d).slice(3), from: d.getTime(), to: endOf(d), label: fmtDate(d) };
+        const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+        const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+        return { mode, m: fmtDate(d).slice(3), from: mon.getTime(), to: endOf(sun), label: `${fmtDate(mon)} – ${fmtDate(sun)}` };
+      }
+      if (mode === 'custom') {
+        let a = pickerGet($(`#${px}From`)), b = pickerGet($(`#${px}To`));
+        if (!a) { a = new Date(today.getFullYear(), today.getMonth(), 1); pickerSet($(`#${px}From`), a, true); }
+        if (!b) { b = today; pickerSet($(`#${px}To`), b, true); }
+        if (a > b) [a, b] = [b, a];
+        return { mode, m: fmtDate(b).slice(3), from: a.getTime(), to: endOf(b), label: `${fmtDate(a)} – ${fmtDate(b)}` };
+      }
+      const m = monthFromInput(`#${px}Month`);
+      const [mm, yy] = m.split('.').map(Number);
+      return { mode: 'month', m, from: new Date(2000 + yy, mm - 1, 1).getTime(), to: endOf(new Date(2000 + yy, mm, 0)), label: monthLabel(m) };
+    }
+
+    function inRange(rg, dateStr) {
+      const d = parseD(dateStr);
+      return !!d && d.getTime() >= rg.from && d.getTime() <= rg.to;
+    }
+
+    // Aylıq maaşın seçilmiş günlərə düşən payı (hər gün = maaş / ayın gün sayı)
+    function salaryForRange(fee, rg) {
+      let t = 0;
+      for (let d = new Date(rg.from); d.getTime() <= rg.to; d.setDate(d.getDate() + 1)) {
+        t += fee / new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      }
+      return Math.round(t * 100) / 100;
     }
 
     function monthLabel(m) {
@@ -1793,10 +1843,10 @@
     /* ---------- Naviqasiya ---------- */
 
     const TITLES = {
-      dash: 'Dashboard', fin: 'Maliyyə icmalı', wa: 'WhatsApp xatırlatmaları', exp: 'Xərclər', rep: 'Aylıq hesabat',
+      dash: 'Əsas səhifə', fin: 'Maliyyə icmalı', wa: 'WhatsApp xatırlatmaları', exp: 'Xərclər', rep: 'Hesabat',
       rez: 'Rezervasiyalar', new: 'Yeni rezervasiya', srv: 'Xidmətlər', cat: 'Kateqoriyalar',
       staff: 'Əməkdaşlar', ten: 'İcarədarlar', cust: 'Müştərilər',
-      rem: 'Reminder', jur: 'Jurnal', auto: 'Ayarlar'
+      rem: 'Xatırlatmalar', jur: 'Jurnal', auto: 'Ayarlar'
     };
 
     function go(p) {
@@ -1943,7 +1993,7 @@
               renderAll();
             }
           }).subscribe((_status, err) => {
-            if (err) setCloudStatus('warn', 'Realtime bloklandı, REST aktivdir');
+            if (err) setCloudStatus('warn', 'Canlı yenilənmə işləmir, məlumat yenə saxlanılır');
           });
 
         dbSubRecs = sb.channel(`rc_${currentUser.id}`)
@@ -1959,10 +2009,10 @@
             saveLocal();
             renderAll();
           }).subscribe((_status, err) => {
-            if (err) setCloudStatus('warn', 'Realtime bloklandı, REST aktivdir');
+            if (err) setCloudStatus('warn', 'Canlı yenilənmə işləmir, məlumat yenə saxlanılır');
           });
       } catch (_) {
-        setCloudStatus('warn', 'Realtime bloklandı, REST aktivdir');
+        setCloudStatus('warn', 'Canlı yenilənmə işləmir, məlumat yenə saxlanılır');
       }
     }
 
@@ -2191,7 +2241,7 @@
       if (!text) return;
       const date = normD($('#rmDate').value) || fmtDate();
       state.rems.unshift({ id: uid(), text, date, done: false });
-      logAction(`Reminder əlavə edildi: ${text}`);
+      logAction(`Xatırlatma əlavə edildi: ${text}`);
       $('#rmText').value = '';
       renderAll();
       await syncStateCloud();
@@ -2201,7 +2251,7 @@
       const r = state.rems.find((x) => String(x.id) === String(id));
       if (!r) return;
       r.done = !r.done;
-      logAction(`Reminder ${r.done ? 'bağlandı' : 'açıldı'}: ${r.text}`);
+      logAction(`Xatırlatma ${r.done ? 'bağlandı' : 'açıldı'}: ${r.text}`);
       renderAll();
       await syncStateCloud();
     }
@@ -2313,19 +2363,22 @@
 
     /* ---------- Maliyyə hesabı ---------- */
 
-    function calcFin(m) {
-      const svc = recs.filter((r) => r.status === 'Tamamlandı' && !isTenantRec(r) && monthOfDate(r.date) === m);
+    // rg verilməyibsə və ya "Ay" seçilibsə — köhnə aylıq hesab; digər dövrlərdə tarixə görə
+    function calcFin(m, rg) {
+      const byDate = !!rg && rg.mode !== 'month';
+      const inP = (dateStr, month) => (byDate ? inRange(rg, dateStr) : month === m);
+      const svc = recs.filter((r) => r.status === 'Tamamlandı' && !isTenantRec(r) && inP(r.date, monthOfDate(r.date)));
       const svcRev = sum(svc, (r) => r.price);
-      const rentPays = state.rentPays.filter((p) => p.month === m);
-      const staffPays = state.staffPays.filter((p) => p.month === m);
-      const exps = state.expenses.filter((x) => monthOfDate(x.date) === m);
+      const rentPays = state.rentPays.filter((p) => inP(p.date, p.month));
+      const staffPays = state.staffPays.filter((p) => inP(p.date, p.month));
+      const exps = state.expenses.filter((x) => inP(x.date, monthOfDate(x.date)));
       const rentIn = sum(rentPays);
       const expSum = sum(exps);
 
       const staffRows = state.staff.map((s) => {
         const done = svc.filter((r) => r.assignee === `Əməkdaş: ${s.name}`);
         const turnover = sum(done, (r) => r.price);
-        const due = s.payType === 'salary' ? s.fee : (turnover * s.fee) / 100;
+        const due = s.payType === 'salary' ? (byDate ? salaryForRange(s.fee, rg) : s.fee) : (turnover * s.fee) / 100;
         const paid = sum(staffPays.filter((p) => p.name === s.name));
         return { s, cnt: done.length, turnover, due, paid, left: Math.max(0, due - paid) };
       });
@@ -2356,7 +2409,7 @@
       const s = state.staff.find((x) => x.id === id);
       const amount = Number($(`#pa_${id}`)?.value) || 0;
       if (!s || amount <= 0) return;
-      const m = monthFromInput('#finMonth');
+      const m = periodRange('fin').m;
       state.staffPays.unshift({ id: uid(), name: s.name, month: m, amount, method: $(`#pm_${id}`).value, date: fmtDate() });
       logAction(`Ustaya ödəniş: ${s.name} — ${n2(amount)} (${monthLabel(m)})`);
       renderAll();
@@ -2367,7 +2420,7 @@
       const t = state.tenants.find((x) => x.id === id);
       const amount = Number($(`#pa_${id}`)?.value) || 0;
       if (!t || amount <= 0) return;
-      const m = monthFromInput('#finMonth');
+      const m = periodRange('fin').m;
       state.rentPays.unshift({ id: uid(), name: t.name, month: m, amount, method: $(`#pm_${id}`).value, date: fmtDate() });
       logAction(`İcarə qəbul edildi: ${t.name} — ${n2(amount)} (${monthLabel(m)})`);
       renderAll();
@@ -2389,8 +2442,8 @@
     }
 
     function exportFinCsv() {
-      const m = monthFromInput('#finMonth');
-      const f = calcFin(m);
+      const rg = periodRange('fin');
+      const f = calcFin(rg.m, rg);
       const rows = [['Tarix', 'Növ', 'Təsvir', 'Üsul', 'Məbləğ']];
       f.svc.forEach((r) => rows.push([r.date, 'Xidmət gəliri', `${r.cust} — ${r.srv}`, r.payMethod, n2(r.price)]));
       f.rentPays.forEach((p) => rows.push([p.date, 'İcarə gəliri', p.name, p.method, n2(p.amount)]));
@@ -2406,7 +2459,7 @@
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `maliyye_${m.replace('.', '_')}.csv`;
+      a.download = `maliyye_${rg.label.replace(/[^0-9A-Za-zƏəÖöÜüĞğİıÇçŞş]+/g, '_')}.csv`;
       document.body.appendChild(a);
       a.click();
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
@@ -2551,20 +2604,26 @@
     }
 
     function rFin() {
-      const m = monthFromInput('#finMonth');
-      const f = calcFin(m);
+      const rg = periodRange('fin');
+      const m = rg.m;
+      const f = calcFin(m, rg);
+      // usta və icarə ödəniş cədvəlləri həmişə aylıqdır (ödəniş aya yazılır)
+      const fm = rg.mode === 'month' ? f : calcFin(m);
+      const mTag = rg.mode === 'month' ? '' : ` (${monthLabel(m)})`;
       const cur = getCurrency();
+      $$('.finMonthTag').forEach((el) => { el.textContent = monthLabel(m); });
+      $('#finPayTitle').textContent = `Ödəniş qeydləri — ${rg.label}`;
 
       $('#finSvc').textContent = n2(f.svcRev);
       $('#finSvcSub').textContent = `${f.svc.length} tamamlanmış xidmət`;
       $('#finRent').textContent = n2(f.rentIn);
-      const rentDue = sum(f.tenantRows, (x) => x.left);
-      $('#finRentSub').textContent = rentDue > 0 ? `Borc: ${money(rentDue)}` : 'Borc yoxdur';
+      const rentDue = sum(fm.tenantRows, (x) => x.left);
+      $('#finRentSub').textContent = rentDue > 0 ? `Borc${mTag}: ${money(rentDue)}` : `Borc yoxdur${mTag}`;
       $('#finExp').textContent = n2(f.expSum);
       $('#finExpSub').textContent = `${f.exps.length} qeyd`;
       $('#finStaff').textContent = n2(f.staffDue);
-      const staffLeft = sum(f.staffRows, (x) => x.left);
-      $('#finStaffSub').textContent = staffLeft > 0 ? `Ödənilməyib: ${money(staffLeft)}` : 'Hamısı ödənilib';
+      const staffLeft = sum(fm.staffRows, (x) => x.left);
+      $('#finStaffSub').textContent = staffLeft > 0 ? `Ödənilməyib${mTag}: ${money(staffLeft)}` : `Hamısı ödənilib${mTag}`;
       setKpi('#finNet', f.net);
 
       $('#finMethodRows').innerHTML = f.methods.map((x) => `
@@ -2583,10 +2642,10 @@
             <div class="cat-progress-head"><span>${esc(c)}</span><span class="muted">${esc(money(v))}</span></div>
             <div class="cat-progress-track"><div class="cat-progress-fill exp" style="width:${Math.max(4, Math.round((v / maxE) * 100))}%;"></div></div>
           </div>`).join('')
-        : '<div class="muted">Bu ay xərc qeyd olunmayıb</div>';
+        : '<div class="muted">Bu dövrdə xərc qeyd olunmayıb</div>';
 
-      $('#finStaffRows').innerHTML = f.staffRows.length
-        ? f.staffRows.map((x) => `
+      $('#finStaffRows').innerHTML = fm.staffRows.length
+        ? fm.staffRows.map((x) => `
           <tr>
             <td><strong>${esc(x.s.name)}</strong><div class="muted">${esc(x.s.role || '')}</div></td>
             <td>${x.s.payType === 'salary' ? `Maaş ${n2(x.s.fee)}` : `${n2(x.s.fee)}%`}</td>
@@ -2599,8 +2658,8 @@
           </tr>`).join('')
         : '<tr><td colspan="8" class="muted">Əməkdaş əlavə edilməyib</td></tr>';
 
-      $('#finTenRows').innerHTML = f.tenantRows.length
-        ? f.tenantRows.map((x) => `
+      $('#finTenRows').innerHTML = fm.tenantRows.length
+        ? fm.tenantRows.map((x) => `
           <tr>
             <td><strong>${esc(x.t.name)}</strong><div class="muted">${esc(x.t.role || '')}</div></td>
             <td class="num">${n2(x.t.fee)}</td>
@@ -2625,17 +2684,17 @@
             <td class="num">${p.sign}${n2(p.amount)}</td>
             <td><button type="button" class="btn btn-danger btn-sm" onclick="delItem('${p.key}', '${esc(p.id)}')">Sil</button></td>
           </tr>`).join('')
-        : '<tr><td colspan="6" class="muted">Bu ay ödəniş qeydi yoxdur</td></tr>';
+        : '<tr><td colspan="6" class="muted">Bu dövrdə ödəniş qeydi yoxdur</td></tr>';
     }
 
     function rExp() {
-      const m = monthFromInput('#expMonth');
+      const rg = periodRange('exp');
       const cat = val('#fExpCat'), meth = val('#fExpMethod'), q = val('#fExpQ').toLocaleLowerCase('az');
       const list = state.expenses
-        .filter((x) => monthOfDate(x.date) === m)
+        .filter((x) => inRange(rg, x.date))
         .filter((x) => (!cat || x.cat === cat) && (!meth || x.method === meth) && (!q || `${x.desc} ${x.cat}`.toLocaleLowerCase('az').includes(q)))
         .sort((a, b) => (parseD(b.date)?.getTime() || 0) - (parseD(a.date)?.getTime() || 0));
-      $('#expTotal').textContent = `${monthLabel(m)}: ${money(sum(list))}`;
+      $('#expTotal').textContent = `${rg.label}: ${money(sum(list))}`;
       $('#fExpCount').textContent = `${list.length} qeyd`;
       $('#expRows').innerHTML = list.length
         ? list.map((x) => `
@@ -2647,7 +2706,7 @@
             <td class="num"><strong>${n2(x.amount)}</strong></td>
             <td><button type="button" class="btn btn-danger btn-sm" onclick="delItem('expenses', '${esc(x.id)}')">Sil</button></td>
           </tr>`).join('')
-        : '<tr><td colspan="6" class="muted">Bu ay xərc yoxdur</td></tr>';
+        : '<tr><td colspan="6" class="muted">Bu dövrdə xərc yoxdur</td></tr>';
     }
 
     function rRez() {
@@ -2689,10 +2748,10 @@
 
     function rRep() {
       const cur = getCurrency();
-      const m = monthFromInput('#repMonth');
+      const rg = periodRange('rep');
       const st = val('#fRepStatus'), who = val('#fRepWho'), pay = val('#fRepPay');
       const list = recs
-        .filter((r) => monthOfDate(r.date) === m)
+        .filter((r) => inRange(rg, r.date))
         .filter((r) => (!st || r.status === st) && (!pay || r.payMethod === pay) && (who === '__none' ? !r.assignee : (!who || r.assignee === who)))
         .sort((a, b) => recSortKey(a) - recSortKey(b));
       lastRepList = list;
@@ -2711,7 +2770,7 @@
             <td class="num">${n2(r.price)} ${esc(cur)}</td>
             <td>${statusPill(r.status)}</td>
           </tr>`).join('')
-        : '<tr><td colspan="7" class="muted">Bu ay üçün qeyd yoxdur</td></tr>';
+        : '<tr><td colspan="7" class="muted">Bu dövr üçün qeyd yoxdur</td></tr>';
     }
 
     function rSrv() {
@@ -2824,7 +2883,7 @@
               </div>
             </td>
           </tr>`).join('')
-        : '<tr><td colspan="4" class="muted">Reminder yoxdur</td></tr>';
+        : '<tr><td colspan="4" class="muted">Xatırlatma yoxdur</td></tr>';
     }
 
     function rStaff() {
@@ -3185,10 +3244,11 @@
     }
 
     function openCardDetail(kind) {
-      const finM = monthFromInput('#finMonth');
-      const m = kind.startsWith('fin') ? finM : kind.startsWith('rep') ? monthFromInput('#repMonth') : curMonth();
-      const f = calcFin(m);
-      const mLbl = monthLabel(m);
+      const rg = kind.startsWith('fin') ? periodRange('fin') : kind.startsWith('rep') ? periodRange('rep') : null;
+      const m = rg ? rg.m : curMonth();
+      const f = calcFin(m, rg);
+      const fm = rg && rg.mode !== 'month' ? calcFin(m) : f;
+      const mLbl = rg ? rg.label : monthLabel(m);
       let title = '', body = '';
       if (kind === 'dashToday') {
         title = `Bugünkü rezervasiyalar (${fmtDate()})`;
@@ -3204,10 +3264,10 @@
         body = netDetail(f);
       } else if (kind === 'finRent') {
         title = `İcarə gəliri — ${mLbl}`;
-        body = sec('İcarədarlar üzrə') + detailTable(
+        body = sec(`İcarədarlar üzrə — ${monthLabel(m)}`) + detailTable(
           [{ t: 'İcarədar' }, { t: 'Aylıq', num: true }, { t: 'Ödənilib', num: true }, { t: 'Borc', num: true }],
-          f.tenantRows.map((x) => [`<strong>${esc(x.t.name)}</strong>`, n2(x.t.fee), n2(x.paid), x.left > 0 ? `<span class="pill warn">${n2(x.left)}</span>` : '0.00']),
-          ['Cəmi', n2(sum(f.tenantRows, (x) => x.t.fee)), n2(f.rentIn), n2(sum(f.tenantRows, (x) => x.left))]
+          fm.tenantRows.map((x) => [`<strong>${esc(x.t.name)}</strong>`, n2(x.t.fee), n2(x.paid), x.left > 0 ? `<span class="pill warn">${n2(x.left)}</span>` : '0.00']),
+          ['Cəmi', n2(sum(fm.tenantRows, (x) => x.t.fee)), n2(sum(fm.tenantRows, (x) => x.paid)), n2(sum(fm.tenantRows, (x) => x.left))]
         ) + sec('Ödəniş qeydləri') + detailTable(
           [{ t: 'Tarix' }, { t: 'İcarədar' }, { t: 'Üsul' }, { t: 'Məbləğ', num: true }],
           [...f.rentPays].sort((a, b) => (parseD(b.date)?.getTime() || 0) - (parseD(a.date)?.getTime() || 0)).map((p) => [esc(p.date), esc(p.name), esc(p.method), n2(p.amount)])
@@ -3333,7 +3393,7 @@
         const d = parseD(r.date);
         if (!d || d.getTime() > today) return;
         const days = Math.round((d.getTime() - today) / DAY_MS);
-        items.push({ key: `rem_${r.id}`, level: days < 0 ? 'err' : 'warn', title: 'Reminder', text: `${r.text} (${r.date})`, page: 'rem', sort: days });
+        items.push({ key: `rem_${r.id}`, level: days < 0 ? 'err' : 'warn', title: 'Xatırlatma', text: `${r.text} (${r.date})`, page: 'rem', sort: days });
       });
       return items.sort((a, b) => a.sort - b.sort);
     }
@@ -3379,6 +3439,7 @@
       $('#notifPanel').classList.add('hidden');
       if (it.month) {
         const [mm, yy] = it.month.split('.');
+        $('#finMode').value = 'month';
         pickerSet($('#finMonth'), new Date(2000 + Number(yy), Number(mm) - 1, 1), true);
       }
       go(it.page);
@@ -3680,7 +3741,7 @@
       const msg = String(event?.reason?.message || event?.reason || '');
       if (msg.includes('WebSocket not available') || msg.includes('is not allowed in Canvas')) {
         event.preventDefault();
-        setCloudStatus('warn', 'Preview WebSocket məhdudiyyəti');
+        setCloudStatus('warn', 'Canlı yenilənmə məhdudlaşdırılıb');
       }
     });
 
