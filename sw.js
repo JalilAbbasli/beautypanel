@@ -2,7 +2,7 @@
 // HTML: əvvəlcə şəbəkə (yeniləmələr dərhal gəlsin), internet yoxdursa keş.
 // İkon, şrift, Supabase kitabxanası: keşdən verilir, arxada yenilənir.
 // Supabase API sorğularına toxunmur — məlumat həmişə birbaşa serverdən gəlir.
-const VERSION = 'bp-v1';
+const VERSION = 'bp-v2';
 const SHELL = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png', '/favicon-32.png'];
 const STATIC_HOSTS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
@@ -52,4 +52,35 @@ self.addEventListener('fetch', (event) => {
     );
   }
   // Qalan bütün sorğular (Supabase və s.) adi qaydada şəbəkəyə gedir.
+});
+
+// Push bildirişi: server hər səhər xatırlatma xülasəsi göndərir
+self.addEventListener('push', (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (_) { d = { body: event.data ? event.data.text() : '' }; }
+  event.waitUntil(self.registration.showNotification(d.title || 'Beauty Panel', {
+    body: d.body || '',
+    icon: '/icon-192.png',
+    badge: '/favicon-32.png',
+    tag: d.tag || 'bp-reminder',
+    renotify: true,
+    data: { url: d.url || '/?p=wa' }
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || '/', self.location.origin).href;
+  const page = new URL(url).searchParams.get('p');
+  event.waitUntil((async () => {
+    const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of list) {
+      if (c.url.startsWith(self.location.origin)) {
+        await c.focus();
+        if (page) c.postMessage({ type: 'open', page });
+        return;
+      }
+    }
+    await self.clients.openWindow(url);
+  })());
 });

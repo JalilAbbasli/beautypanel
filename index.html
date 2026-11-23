@@ -568,6 +568,16 @@
               <span>Maliyyə icmalı</span>
             </span>
           </button>
+          <button type="button" class="nav-item" data-p="wa" onclick="go('wa')">
+            <span class="nav-left">
+              <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z"></path>
+                <path d="M9 10h.01M12 10h.01M15 10h.01"></path>
+              </svg>
+              <span>WhatsApp xatırlatmaları</span>
+            </span>
+            <span id="bdgWa" class="badge">0</span>
+          </button>
           <button type="button" class="nav-item" data-p="exp" onclick="go('exp')">
             <span class="nav-left">
               <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -906,6 +916,33 @@
               <thead><tr><th>Tarix</th><th>Növ</th><th>Ad</th><th>Üsul</th><th class="num">Məbləğ</th><th></th></tr></thead>
               <tbody id="finPayRows"></tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- WHATSAPP XATIRLATMALARI -->
+      <section id="p_wa" class="page hidden">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Bugünkü WhatsApp xatırlatmaları</div>
+              <div class="muted">Ödəniş günü yaxınlaşan və ya gecikən icarədarlar. “Göndər” WhatsApp-ı hazır mesajla açır — orada “Göndər” basın.</div>
+            </div>
+            <span id="waProgress" class="badge">0 / 0</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>İcarədar</th><th class="num">Borc</th><th>Ödəniş tarixi</th><th>Vəziyyət</th><th>Son xatırlatma</th><th></th></tr></thead>
+              <tbody id="waRows"></tbody>
+            </table>
+          </div>
+          <div id="waMsg" class="msg hidden"></div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:6px;">Səhər bildirişi</div>
+          <div class="muted" id="waPushInfo">Hər səhər saat 10:00-da (Bakı vaxtı) xatırlatma lazım olan icarədar varsa, bu cihaza bildiriş gəlir — panel bağlı olsa belə. Aktivləşdirmək üçün: Ayarlar → Brauzer bildirişləri.</div>
+          <div class="row-actions" style="margin-top:10px;">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="go('auto')">Ayarlara keç</button>
           </div>
         </div>
       </section>
@@ -1251,8 +1288,12 @@
             </div>
             <div class="field">
               <label>Brauzer bildirişləri</label>
-              <label class="check-row"><input id="setBrowserNotif" type="checkbox" /> Panel açıq olanda kompüter / telefon bildirişi göstər</label>
-              <div class="muted" style="margin-top:6px;">Bildirişlər paneldə zəng ikonunda və Dashboard-da həmişə görünür.</div>
+              <label class="check-row"><input id="setBrowserNotif" type="checkbox" /> Bu cihaza bildiriş göndər (hər səhər 10:00 və panel açıq olanda)</label>
+              <div id="pushStatus" class="muted" style="margin-top:6px;">Bildirişlər paneldə zəng ikonunda və Dashboard-da həmişə görünür.</div>
+              <div class="row-actions" style="margin-top:8px;">
+                <button type="button" id="pushTestBtn" class="btn btn-ghost btn-sm" onclick="testPush()">Test bildirişi göndər</button>
+              </div>
+              <div class="muted" style="margin-top:6px;">iPhone-da bildirişlər yalnız panel ana ekrana əlavə olunanda işləyir (Safari → Paylaş → Ana ekrana əlavə et).</div>
             </div>
             <div class="field" style="grid-column:1/-1;">
               <label>İcarədara WhatsApp xatırlatma mətni</label>
@@ -1711,7 +1752,7 @@
     /* ---------- Naviqasiya ---------- */
 
     const TITLES = {
-      dash: 'Dashboard', fin: 'Maliyyə icmalı', exp: 'Xərclər', rep: 'Aylıq hesabat',
+      dash: 'Dashboard', fin: 'Maliyyə icmalı', wa: 'WhatsApp xatırlatmaları', exp: 'Xərclər', rep: 'Aylıq hesabat',
       rez: 'Rezervasiyalar', new: 'Yeni rezervasiya', srv: 'Xidmətlər', cat: 'Kateqoriyalar',
       staff: 'Əməkdaşlar', ten: 'İcarədarlar', cust: 'Müştərilər',
       rem: 'Reminder', jur: 'Jurnal', auto: 'Ayarlar'
@@ -1831,6 +1872,7 @@
       $('#setNotifyDays').value = state.settings.rentNotifyDays;
       $('#setBrowserNotif').checked = !!state.settings.browserNotif;
       $('#setWaTpl').value = state.settings.waTemplate || DEFAULT_WA_TPL;
+      refreshPushStatus();
       $('#tNotify').value = state.settings.rentNotifyDays;
       $('#sideSalonTitle').textContent = state.settings?.salonName || 'Salon';
       $('#rDate').value = fmtDate();
@@ -2337,20 +2379,22 @@
         $('#setNotifyAll').checked = false;
       }
       const wantBrowser = $('#setBrowserNotif').checked;
-      if (wantBrowser && 'Notification' in window && Notification.permission === 'default') {
-        try { await Notification.requestPermission(); } catch (_) {}
+      let pushWarn = '';
+      if (wantBrowser) {
+        try { await enablePush(); } catch (err) { pushWarn = err?.message || String(err); }
+      } else {
+        try { await disablePush(); } catch (_) {}
       }
       state.settings.browserNotif = wantBrowser;
-      if (wantBrowser && (!('Notification' in window) || Notification.permission === 'denied')) {
-        showMsg('#setMsg', 'Brauzer bildirişlərə icazə vermir. Brauzerin sayt ayarlarından icazə verin. Bildirişlər paneldə görünməyə davam edəcək.', 'warn');
-      }
+      refreshPushStatus();
       $('#tNotify').value = state.settings.rentNotifyDays;
       $('#sideSalonTitle').textContent = state.settings.salonName;
       logAction('Salon ayarları yeniləndi');
       fillSelects();
       renderAll();
       await syncStateCloud();
-      showMsg('#setMsg', 'Ayarlar yadda saxlanıldı.', 'ok');
+      if (pushWarn) showMsg('#setMsg', `Ayarlar saxlanıldı, amma bildiriş qurulmadı: ${pushWarn}`, 'warn');
+      else showMsg('#setMsg', 'Ayarlar yadda saxlanıldı.', 'ok');
     }
 
     /* ---------- Render ---------- */
@@ -2807,6 +2851,113 @@
       return html + '</div>';
     }
 
+    function waDueList() {
+      const today = fmtDate();
+      return state.tenants
+        .map((t) => ({ t, i: tenantDueInfo(t) }))
+        .filter(({ i }) => i && (i.status === 'soon' || i.status === 'overdue'))
+        .map(({ t, i }) => ({ t, i, sentToday: !!(t.reminded && t.reminded.m === i.m && t.reminded.date === today) }))
+        .sort((a, b) => a.i.days - b.i.days);
+    }
+
+    function rWa() {
+      const list = waDueList();
+      const withPhone = list.filter((x) => x.t.phone);
+      const sent = withPhone.filter((x) => x.sentToday).length;
+      const pending = withPhone.length - sent;
+      $('#bdgWa').textContent = pending;
+      $('#bdgWa').style.background = pending ? 'var(--err)' : '';
+      $('#bdgWa').style.color = pending ? '#fff' : '';
+      $('#waProgress').textContent = `${sent} / ${withPhone.length} göndərilib`;
+      $('#waRows').innerHTML = list.length
+        ? list.map(({ t, i, sentToday }) => {
+          const id = esc(t.id);
+          const st = i.status === 'overdue' ? `<span class="pill err">${-i.days} gün gecikir</span>` : `<span class="pill warn">${i.days === 0 ? 'Bu gün' : `${i.days} gün qalıb`}</span>`;
+          const last = t.reminded && t.reminded.m === i.m ? esc(t.reminded.date) : '<span class="muted">—</span>';
+          let action;
+          if (!t.phone) action = `<button type="button" class="btn btn-ghost btn-sm" onclick="go('ten')">Nömrə əlavə et</button>`;
+          else if (sentToday) action = `<span class="pill ok">✓ Bu gün göndərilib</span> <button type="button" class="btn btn-ghost btn-sm" onclick="remindTenant('${id}')">Yenidən</button>`;
+          else action = `<button type="button" class="btn btn-wa btn-sm" onclick="remindTenant('${id}')">${WA_ICON} Göndər</button>`;
+          return `
+          <tr>
+            <td><strong>${esc(t.name)}</strong><div class="muted">${t.phone ? esc(fmtPhone(t.phone)) : 'WhatsApp nömrəsi yoxdur'}</div></td>
+            <td class="num"><strong>${n2(i.left)}</strong> ${esc(getCurrency())}</td>
+            <td>${esc(i.dueLbl)}</td>
+            <td>${st}</td>
+            <td>${last}</td>
+            <td><div class="row-actions">${action}</div></td>
+          </tr>`;
+        }).join('')
+        : '<tr><td colspan="6" class="muted">Bu gün xatırlatma lazım olan icarədar yoxdur ✓</td></tr>';
+    }
+
+    /* ---------- Push bildirişləri (panel bağlı olanda da) ---------- */
+    const PUSH_FN = 'daily-reminders';
+    function b64uToBytes(str) {
+      const s = str.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((str.length + 3) % 4);
+      return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+    }
+    const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol === 'https:';
+
+    async function enablePush() {
+      if (!pushSupported()) throw new Error('Bu brauzer arxa planda bildirişi dəstəkləmir. iPhone-da paneli əvvəlcə ana ekrana əlavə edin.');
+      if (isLocalPreview || !sb) throw new Error('Buluda qoşulmadan bildiriş qurmaq olmur.');
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') throw new Error('Bildiriş icazəsi verilmədi. Brauzerin sayt ayarlarından icazə verin.');
+      const reg = await navigator.serviceWorker.ready;
+      const { data, error } = await sb.functions.invoke(PUSH_FN, { body: { action: 'vapid' } });
+      if (error || !data?.publicKey) throw new Error('Serverdən açar alınmadı.');
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(data.publicKey) });
+      const j = sub.toJSON();
+      const { error: e2 } = await sb.from('push_subscriptions').upsert({
+        endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
+        user_id: currentUser.id, user_agent: navigator.userAgent.slice(0, 200)
+      }, { onConflict: 'endpoint' });
+      if (e2) throw new Error(e2.message);
+    }
+
+    async function disablePush() {
+      if (!pushSupported()) return;
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = await reg?.pushManager.getSubscription();
+      if (!sub) return;
+      if (sb && !isLocalPreview) { try { await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint); } catch (_) {} }
+      await sub.unsubscribe();
+    }
+
+    async function refreshPushStatus() {
+      const el = $('#pushStatus');
+      if (!el) return;
+      if (!pushSupported()) { el.textContent = 'Bu brauzerdə arxa plan bildirişi yoxdur. Bildirişlər paneldə görünür.'; return; }
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = await reg?.pushManager.getSubscription();
+      el.textContent = sub && Notification.permission === 'granted'
+        ? '✓ Bu cihaz bildiriş alır: hər səhər 10:00-da xatırlatma xülasəsi gələcək.'
+        : 'Bu cihaz hələ bildiriş almır. Seçimi işarələyib “Ayarları saxla” basın.';
+    }
+
+    async function testPush() {
+      const btn = $('#pushTestBtn');
+      btn.disabled = true;
+      try {
+        if (!sb || isLocalPreview) throw new Error('Buluda qoşulmadan test etmək olmur.');
+        const { data, error } = await sb.functions.invoke(PUSH_FN, { body: { action: 'test' } });
+        let msg = data?.error || '';
+        if (error) { try { msg = (await error.context.json()).error; } catch (_) { msg = error.message; } }
+        if (msg) throw new Error(msg);
+        showMsg('#setMsg', data.sent ? `Test bildirişi ${data.sent} cihaza göndərildi. Bir neçə saniyəyə gəlməlidir.` : 'Bildiriş göndərilmədi. Bu cihazda bildirişi yenidən aktivləşdirin.', data.sent ? 'ok' : 'warn');
+      } catch (err) {
+        showMsg('#setMsg', err.message || String(err));
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    navigator.serviceWorker?.addEventListener?.('message', (e) => {
+      if (e.data?.type === 'open' && e.data.page && TITLES[e.data.page] && currentUser) go(e.data.page);
+    });
+
     function dueText(i) {
       if (!i) return '';
       if (i.status === 'paid') return 'Ödənilib';
@@ -2975,7 +3126,7 @@
           level: i.status === 'overdue' ? 'err' : 'warn',
           title: `İcarə ödənişi: ${t.name}`,
           text: `${n2(i.left)} ${cur} — ödəniş tarixi ${i.dueLbl} (${when})${t.reminded && t.reminded.m === i.m ? ` · WhatsApp xatırlatması: ${t.reminded.date}` : ''}`,
-          page: 'ten', month: i.m, sort: i.days, tenantId: t.id, hasPhone: !!t.phone
+          page: 'wa', month: i.m, sort: i.days, tenantId: t.id, hasPhone: !!t.phone
         });
       });
       const today = startOfToday();
@@ -3280,6 +3431,7 @@
       fillFilterSelects();
       $('#bdgRez').textContent = recs.filter((r) => r.status === 'Gözləyir' || r.status === 'Təsdiqləndi').length;
       $('#bdgRem').textContent = state.rems.filter((x) => !x.done).length;
+      rWa();
       $('#todayLabel').textContent = `Bu gün: ${fmtDate()}`;
       rDash();
       rFin();
