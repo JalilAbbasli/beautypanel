@@ -229,7 +229,7 @@
     .cloud-status.warn { background: var(--warn-bg); color: var(--warn); }
     .cloud-status.err { background: var(--err-bg); color: var(--err); }
 
-    .main { padding: 20px 24px 40px; max-width: 1280px; width: 100%; }
+    .main { padding: 20px 24px 40px; max-width: 1280px; width: 100%; min-width: 0; }
     .topbar {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
       gap: 12px; margin-bottom: 20px;
@@ -1095,7 +1095,7 @@
           <form id="fR" action="javascript:void(0)" onsubmit="saveRez(event)">
             <div class="grid-2">
               <div class="field"><label>Müştəri adı *</label><input id="rCust" type="text" required placeholder="Müştəri adı" /></div>
-              <div class="field"><label>Telefon</label><input id="rPhone" type="text" placeholder="+994..." /></div>
+              <div class="field"><label>Telefon</label><input id="rPhone" type="tel" inputmode="tel" autocomplete="off" placeholder="050 123 45 67" /></div>
               <div class="field"><label>Xidmət</label><select id="rSrv" onchange="syncSrvPrice()"></select></div>
               <div class="field"><label>Əməkdaş / İcarədar</label><select id="rAssignee"></select></div>
               <div class="field"><label>Tarix</label><input id="rDate" type="text" readonly autocomplete="off" class="picker-input" data-picker="dmy" /></div>
@@ -1507,6 +1507,16 @@
     const money = (v) => `${n2(v)} ${getCurrency()}`;
     const sum = (arr, f = (x) => x.amount) => arr.reduce((a, b) => a + (Number(f(b)) || 0), 0);
     const isTenantRec = (r) => String(r.assignee || '').startsWith('İcarədar:');
+    // Silinmiş əməkdaş / icarədar adının yanında "(silinib)" göstər
+    function whoLabel(a, empty = '-') {
+      if (!a) return empty;
+      const ok = state.staff.some((x) => a === `Əməkdaş: ${x.name}`) || state.tenants.some((x) => a === `İcarədar: ${x.name}`);
+      return ok ? a : `${a} (silinib)`;
+    }
+    const payNameLabel = (key, name) => {
+      const list = key === 'rentPays' ? state.tenants : state.staff;
+      return list.some((x) => x.name === name) ? name : `${name} (silinib)`;
+    };
     function clampInt(v, min, max, def) {
       if (v === '' || v === null || v === undefined) return def;
       const n = parseInt(v, 10);
@@ -1546,8 +1556,11 @@
       el.textContent = text;
       el.className = `msg ${mode}`;
       el.classList.remove('hidden');
+      // mesaj ekranda görünmürsə (məs. cədvəlin aşağısında işləyəndə), ona sürüşdür
+      const r = el.getBoundingClientRect();
+      if (r.top < 0 || r.bottom > window.innerHeight) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       clearTimeout(el._t);
-      el._t = setTimeout(() => el.classList.add('hidden'), 4000);
+      el._t = setTimeout(() => el.classList.add('hidden'), 5000);
     }
 
     function showAuthMsg(text, mode = 'err') {
@@ -2020,6 +2033,7 @@
 
     function fillSelects() {
       const cur = getCurrency();
+      const keep = ['#sCat', '#eCat', '#rSrv', '#rAssignee'].map((sel) => [sel, $(sel)?.value || '']);
       $('#sCat').innerHTML = state.cats.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
       $('#eCat').innerHTML = state.expCats.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
       $('#rSrv').innerHTML = '<option value="">Xidmət seçin</option>' +
@@ -2033,6 +2047,7 @@
       if (!$('#eMethod').options.length) $('#eMethod').innerHTML = methodOptions('Nağd');
       if (!$('#tDue').options.length) $('#tDue').innerHTML = dueDayOptions(null);
       if ($('#tNotify').value === '') $('#tNotify').value = defaultNotify();
+      keep.forEach(([sel, v]) => { const el = $(sel); if (v && [...el.options].some((o) => o.value === v)) el.value = v; });
     }
 
     function dueDayOptions(selected) {
@@ -2097,11 +2112,18 @@
         showMsg('#rezMsg', 'Tarix düzgün deyil. Format: GG.AA.İİ (məs: 22.11.26)');
         return;
       }
+      const rawPhone = ($('#rPhone').value || '').trim();
+      const phone = rawPhone ? normalizePhone(rawPhone) : '';
+      if (rawPhone && !phone) {
+        showMsg('#rezMsg', 'Telefonu düzgün yazın. Məsələn: 050 123 45 67 və ya +994 50 123 45 67 (boş da saxlamaq olar).');
+        $('#rPhone').focus();
+        return;
+      }
       const srv = state.services.find((s) => s.id === $('#rSrv').value);
       const rec = normalizeRec({
         id: `${currentUser.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         cust,
-        phone: ($('#rPhone').value || '').trim(),
+        phone,
         srv: srv ? srv.name : 'Xidmət',
         assignee: $('#rAssignee').value || '',
         date,
@@ -2572,7 +2594,8 @@
         return { cat: c, cnt: items.length, rev: sum(items, (r) => r.price) };
       });
       const maxCat = Math.max(...byCat.map((x) => x.rev), 1);
-      $('#catBreakdown').innerHTML = byCat.map((item) => {
+      const catsWithRev = byCat.filter((x) => x.cnt > 0).sort((a, b) => b.rev - a.rev);
+      $('#catBreakdown').innerHTML = !catsWithRev.length ? '<div class="muted">Bu ay tamamlanmış xidmət yoxdur</div>' : catsWithRev.map((item) => {
         const pct = item.rev > 0 ? Math.max(4, Math.round((item.rev / maxCat) * 100)) : 0;
         return `
           <div class="cat-progress-item">
@@ -2593,9 +2616,9 @@
       $('#dashRows').innerHTML = upcoming.length
         ? upcoming.map((r) => `
           <tr>
-            <td><strong>${esc(r.cust)}</strong><div class="muted">${esc(r.phone || '')}</div></td>
+            <td><strong>${esc(r.cust)}</strong><div class="muted">${esc(fmtPhone(normalizePhone(r.phone) || r.phone || ''))}</div></td>
             <td>${esc(r.srv)}</td>
-            <td><span class="muted">${esc(r.assignee || 'Təyin edilməyib')}</span></td>
+            <td><span class="muted">${esc(whoLabel(r.assignee, 'Təyin edilməyib'))}</span></td>
             <td>${esc(r.date)} ${esc(r.time || '')}</td>
             <td class="num"><strong>${n2(r.price)}</strong> ${esc(cur)}</td>
             <td>${statusPill(r.status)}</td>
@@ -2679,7 +2702,7 @@
           <tr>
             <td>${esc(p.date)}</td>
             <td>${p.kind}</td>
-            <td>${esc(p.name)}</td>
+            <td>${esc(payNameLabel(p.key, p.name))}</td>
             <td>${esc(p.method)}</td>
             <td class="num">${p.sign}${n2(p.amount)}</td>
             <td><button type="button" class="btn btn-danger btn-sm" onclick="delItem('${p.key}', '${esc(p.id)}')">Sil</button></td>
@@ -2730,9 +2753,9 @@
       $('#rezRows').innerHTML = list.length
         ? list.map((r) => `
           <tr>
-            <td><strong>${esc(r.cust)}</strong><div class="muted">${esc(r.phone || '')}${r.note ? ` · ${esc(r.note)}` : ''}</div></td>
+            <td><strong>${esc(r.cust)}</strong><div class="muted">${esc(fmtPhone(normalizePhone(r.phone) || r.phone || ''))}${r.note ? ` · ${esc(r.note)}` : ''}</div></td>
             <td>${esc(r.srv)}</td>
-            <td><span class="muted">${esc(r.assignee || '-')}</span></td>
+            <td><span class="muted">${esc(whoLabel(r.assignee))}</span></td>
             <td>${esc(r.date)} ${esc(r.time || '')}</td>
             <td class="num">${n2(r.price)} ${esc(cur)}</td>
             <td><select class="mini-select" onchange="setRezField('${esc(r.id)}', 'payMethod', this.value)">${methodOptions(r.payMethod)}</select></td>
@@ -2765,7 +2788,7 @@
             <td>${esc(r.date)} ${esc(r.time || '')}</td>
             <td>${esc(r.cust)}</td>
             <td>${esc(r.srv)}</td>
-            <td><span class="muted">${esc(r.assignee || '-')}</span></td>
+            <td><span class="muted">${esc(whoLabel(r.assignee))}</span></td>
             <td>${esc(r.payMethod)}</td>
             <td class="num">${n2(r.price)} ${esc(cur)}</td>
             <td>${statusPill(r.status)}</td>
@@ -2798,17 +2821,20 @@
     function rCust() {
       const cur = getCurrency();
       const map = new Map();
+      buildCustKeys();
       recs.forEach((r) => {
-        const key = (r.cust || '').trim();
-        if (!key) return;
-        const it = map.get(key) || { name: key, phone: '-', cnt: 0, sum: 0, last: 0, lastLbl: '-' };
+        const name = (r.cust || '').trim();
+        if (!name) return;
+        const key = custKeyOf.get(r);
+        const it = map.get(key) || { key, name, phone: '-', cnt: 0, sum: 0, last: 0, lastLbl: '-' };
         it.cnt += 1;
         if (r.status === 'Tamamlandı') {
           it.sum += Number(r.price) || 0;
           const k = recSortKey(r);
           if (k > it.last) { it.last = k; it.lastLbl = r.date; }
         }
-        if (r.phone) it.phone = r.phone;
+        const ph = normalizePhone(r.phone);
+        if (ph) it.phone = fmtPhone(ph); else if (r.phone && it.phone === '-') it.phone = r.phone;
         map.set(key, it);
       });
       const q = val('#fCustQ').toLocaleLowerCase('az'), sort = val('#fCustSort') || 'sum';
@@ -2822,16 +2848,16 @@
         .filter((c) => !q || `${c.name} ${c.phone}`.toLocaleLowerCase('az').includes(q))
         .sort(sorters[sort] || sorters.sum);
       $('#fCustCount').textContent = `${rows.length} müştəri`;
-      custNames = rows.map((c) => c.name);
+      custNames = rows.map((c) => c.key);
       $('#custRows').innerHTML = rows.length
         ? rows.map((c, idx) => `
           <tr class="cust-row" onclick="toggleCust(${idx})" title="Tarixçəni göstər">
-            <td><strong>${openCust === c.name ? '▾' : '▸'} ${esc(c.name)}</strong></td>
+            <td><strong>${openCust === c.key ? '▾' : '▸'} ${esc(c.name)}</strong></td>
             <td>${esc(c.phone)}</td>
             <td class="num">${c.cnt}</td>
             <td>${esc(c.lastLbl)}</td>
             <td class="num">${n2(c.sum)} ${esc(cur)}</td>
-          </tr>${openCust === c.name ? `<tr class="cust-hist-row"><td colspan="5">${custHistoryHtml(c.name)}</td></tr>` : ''}`).join('')
+          </tr>${openCust === c.key ? `<tr class="cust-hist-row"><td colspan="5">${custHistoryHtml(c.key)}</td></tr>` : ''}`).join('')
         : '<tr><td colspan="5" class="muted">Müştəri yoxdur</td></tr>';
     }
 
@@ -2845,14 +2871,32 @@
       labelTables();
     }
 
-    function custHistoryHtml(name) {
+    // Müştəri açarı: telefon varsa telefon, yoxdursa ad. Telefonsuz qeyd eyni adlı yeganə telefonlu müştəriyə bağlanır.
+    let custKeyOf = new Map();
+    function buildCustKeys() {
+      custKeyOf = new Map();
+      const phonesByName = new Map();
+      recs.forEach((r) => {
+        const n = (r.cust || '').trim().toLocaleLowerCase('az');
+        const ph = normalizePhone(r.phone);
+        if (n && ph) phonesByName.set(n, new Set([...(phonesByName.get(n) || []), ph]));
+      });
+      recs.forEach((r) => {
+        const n = (r.cust || '').trim().toLocaleLowerCase('az');
+        const ph = normalizePhone(r.phone);
+        const only = phonesByName.get(n);
+        custKeyOf.set(r, ph ? `p${ph}` : only && only.size === 1 ? `p${[...only][0]}` : `n${n}`);
+      });
+    }
+
+    function custHistoryHtml(key) {
       const cur = getCurrency();
-      const list = recs.filter((r) => (r.cust || '').trim() === name).sort((a, b) => recSortKey(b) - recSortKey(a));
+      const list = recs.filter((r) => custKeyOf.get(r) === key).sort((a, b) => recSortKey(b) - recSortKey(a));
       return `<div class="cust-hist">
         <div class="muted" style="margin-bottom:6px;">Rezervasiya tarixçəsi (${list.length})</div>
         ${list.map((r) => `
           <div class="cust-hist-item">
-            <div><strong>${esc(r.date)} ${esc(r.time || '')}</strong> · ${esc(r.srv)}${r.assignee ? ` · <span class="muted">${esc(r.assignee)}</span>` : ''}</div>
+            <div><strong>${esc(r.date)} ${esc(r.time || '')}</strong> · ${esc(r.srv)}${r.assignee ? ` · <span class="muted">${esc(whoLabel(r.assignee))}</span>` : ''}</div>
             <div class="row-actions">${n2(r.price)} ${esc(cur)} · ${esc(r.payMethod)} ${statusPill(r.status)}</div>
             ${r.note ? `<div class="muted">Qeyd: ${esc(r.note)}</div>` : ''}
           </div>`).join('')}
@@ -3213,7 +3257,7 @@
 
     const recRowsTable = (list, withStatus = true) => detailTable(
       [{ t: 'Tarix' }, { t: 'Müştəri' }, { t: 'Xidmət' }, { t: 'Əməkdaş / İcarədar' }, { t: 'Üsul' }, { t: 'Məbləğ', num: true }, ...(withStatus ? [{ t: 'Status' }] : [])],
-      list.map((r) => [esc(`${r.date} ${r.time || ''}`), `<strong>${esc(r.cust)}</strong>`, esc(r.srv), `<span class="muted">${esc(r.assignee || '-')}</span>`, esc(r.payMethod), n2(r.price), ...(withStatus ? [statusPill(r.status)] : [])]),
+      list.map((r) => [esc(`${r.date} ${r.time || ''}`), `<strong>${esc(r.cust)}</strong>`, esc(r.srv), `<span class="muted">${esc(whoLabel(r.assignee))}</span>`, esc(r.payMethod), n2(r.price), ...(withStatus ? [statusPill(r.status)] : [])]),
       list.length > 1 ? ['Cəmi', '', '', '', '', `<strong>${n2(sum(list, (r) => r.price))}</strong>`, ...(withStatus ? [''] : [])] : null
     );
 
@@ -3230,7 +3274,7 @@
       const list = [...f.svc].sort((a, b) => recSortKey(b) - recSortKey(a));
       return pills(byKey(list, (r) => r.payMethod, (r) => r.price).map(([k, v]) => [k, money(v)]))
         + sec('Əməkdaş / icarədar üzrə')
-        + detailTable([{ t: 'Kim' }, { t: 'Məbləğ', num: true }], byKey(list, (r) => r.assignee || 'Təyin edilməyib', (r) => r.price).map(([k, v]) => [esc(k), n2(v)]))
+        + detailTable([{ t: 'Kim' }, { t: 'Məbləğ', num: true }], byKey(list, (r) => whoLabel(r.assignee, 'Təyin edilməyib'), (r) => r.price).map(([k, v]) => [esc(k), n2(v)]))
         + sec('Tamamlanmış xidmətlər') + recRowsTable(list, false);
     }
 
@@ -3270,7 +3314,7 @@
           ['Cəmi', n2(sum(fm.tenantRows, (x) => x.t.fee)), n2(sum(fm.tenantRows, (x) => x.paid)), n2(sum(fm.tenantRows, (x) => x.left))]
         ) + sec('Ödəniş qeydləri') + detailTable(
           [{ t: 'Tarix' }, { t: 'İcarədar' }, { t: 'Üsul' }, { t: 'Məbləğ', num: true }],
-          [...f.rentPays].sort((a, b) => (parseD(b.date)?.getTime() || 0) - (parseD(a.date)?.getTime() || 0)).map((p) => [esc(p.date), esc(p.name), esc(p.method), n2(p.amount)])
+          [...f.rentPays].sort((a, b) => (parseD(b.date)?.getTime() || 0) - (parseD(a.date)?.getTime() || 0)).map((p) => [esc(p.date), esc(payNameLabel('rentPays', p.name)), esc(p.method), n2(p.amount)])
         );
       } else if (kind === 'finExp') {
         title = `Xərclər — ${mLbl}`;
@@ -3287,7 +3331,7 @@
           ['Cəmi', '', n2(sum(f.staffRows, (x) => x.turnover)), n2(f.staffDue), n2(sum(f.staffRows, (x) => x.paid)), n2(sum(f.staffRows, (x) => x.left))]
         ) + sec('Ödəniş qeydləri') + detailTable(
           [{ t: 'Tarix' }, { t: 'Usta' }, { t: 'Üsul' }, { t: 'Məbləğ', num: true }],
-          f.staffPays.map((p) => [esc(p.date), esc(p.name), esc(p.method), n2(p.amount)])
+          f.staffPays.map((p) => [esc(p.date), esc(payNameLabel('staffPays', p.name)), esc(p.method), n2(p.amount)])
         );
       } else if (kind === 'repCnt') {
         title = `Rezervasiyalar (ləğvsiz) — ${mLbl}`;
